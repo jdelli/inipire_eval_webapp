@@ -14,7 +14,7 @@ import { employeeSnapshot } from '../data/mock-data';
 interface NavItem {
   label: string;
   route: string;
-  icon: 'grid' | 'calendar' | 'star' | 'shield' | 'users';
+  icon: 'grid' | 'calendar' | 'star' | 'users';
   description: string;
 }
 
@@ -52,12 +52,6 @@ export class ShellComponent {
       description: 'Competency snapshot with benchmark comparison.',
     },
     {
-      label: 'Incident Reports',
-      route: '/incident-reports',
-      icon: 'shield',
-      description: 'Operational risks with owners and executive follow-up.',
-    },
-    {
       label: 'Personnel',
       route: '/personnel',
       icon: 'users',
@@ -74,8 +68,6 @@ export class ShellComponent {
         return 'Maintain the weekly rhythm; highlight where momentum accelerates or stalls.';
       case '/ratings':
         return 'Compare leadership impact across dimensions and spot stretch opportunities.';
-      case '/incident-reports':
-        return 'Track critical moments with clear owners, status, and executive visibility.';
       case '/personnel':
         return 'View all employees and trainees organized by department.';
       default:

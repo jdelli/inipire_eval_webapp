@@ -6,10 +6,16 @@ import { RatingsComponent } from './pages/ratings.component';
 import { IncidentReportsComponent } from './pages/incident-reports.component';
 import { PersonnelComponent } from './pages/personnel.component';
 import { FirebaseTestComponent } from './pages/firebase-test.component';
+import { LoginComponent } from './pages/login.component';
+import { RegisterComponent } from './pages/register.component';
+import { authGuard } from './services/auth.guard';
 
 export const routes: Routes = [
+  { path: 'login', component: LoginComponent },
+  { path: 'register', component: RegisterComponent },
   {
     path: '',
+    canActivate: [authGuard],
     component: RoleHostComponent,
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
@@ -21,4 +27,5 @@ export const routes: Routes = [
       { path: 'firebase-test', component: FirebaseTestComponent },
     ],
   },
+  { path: '**', redirectTo: 'dashboard' },
 ];

@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, computed, inject } from '@angular/core';
 import {
   Firestore,
   collection,
@@ -10,61 +10,99 @@ import { Observable, from, combineLatest } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Employee, Trainee, DepartmentGroup } from '../models/personnel.model';
 import { environment } from '../../environments/environment';
+import { RoleService } from '../state/role.service';
 
 @Injectable({ providedIn: 'root' })
 export class PersonnelService {
   private readonly firestore = inject(Firestore);
+  private readonly roleService = inject(RoleService);
   private readonly defaultCompanyId = environment.defaultCompanyId;
 
+  private readonly restrictedDepartment = computed(() =>
+    this.roleService.role() === 'team-leader' ? this.roleService.department() : null
+  );
+
   getEmployees(companyId?: string | null): Observable<Employee[]> {
-    const resolvedCompanyId = companyId === null ? null : (companyId ?? this.defaultCompanyId);
-    console.log('🔍 PersonnelService: Fetching employees', resolvedCompanyId ? `for company: ${resolvedCompanyId}` : '(all companies)');
+    const resolvedCompanyId =
+      companyId === null ? null : companyId ?? this.defaultCompanyId;
+    const departmentFilter = this.restrictedDepartment();
+
+    console.log(
+      '[PersonnelService] Fetching employees',
+      resolvedCompanyId ? `company=${resolvedCompanyId}` : 'all companies',
+      departmentFilter ? `department=${departmentFilter}` : 'all departments'
+    );
+
     const employeesRef = collection(this.firestore, 'employees');
-    const q = resolvedCompanyId
-      ? query(employeesRef, where('companyId', '==', resolvedCompanyId))
-      : employeesRef;
+    const constraints = [];
+
+    if (resolvedCompanyId) {
+      constraints.push(where('companyId', '==', resolvedCompanyId));
+    }
+    if (departmentFilter) {
+      constraints.push(where('department', '==', departmentFilter));
+    }
+
+    const q = constraints.length ? query(employeesRef, ...constraints) : employeesRef;
 
     return from(
       getDocs(q).then((snapshot) => {
-        console.log('📦 Employees snapshot received, size:', snapshot.size);
+        console.log('[PersonnelService] Employees snapshot size:', snapshot.size);
         const employees = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         })) as Employee[];
-        console.log('👥 Employees parsed:', employees.length);
         return employees;
       })
     );
   }
 
   getTrainees(companyId?: string | null): Observable<Trainee[]> {
-    const resolvedCompanyId = companyId === null ? null : (companyId ?? this.defaultCompanyId);
-    console.log('🔍 PersonnelService: Fetching trainees', resolvedCompanyId ? `for company: ${resolvedCompanyId}` : '(all companies)');
+    const resolvedCompanyId =
+      companyId === null ? null : companyId ?? this.defaultCompanyId;
+    const departmentFilter = this.restrictedDepartment();
+
+    console.log(
+      '[PersonnelService] Fetching trainees',
+      resolvedCompanyId ? `company=${resolvedCompanyId}` : 'all companies',
+      departmentFilter ? `department=${departmentFilter}` : 'all departments'
+    );
+
     const traineesRef = collection(this.firestore, 'trainingRecords');
-    const q = resolvedCompanyId
-      ? query(traineesRef, where('companyId', '==', resolvedCompanyId))
-      : traineesRef;
+    const constraints = [];
+
+    if (resolvedCompanyId) {
+      constraints.push(where('companyId', '==', resolvedCompanyId));
+    }
+    if (departmentFilter) {
+      constraints.push(where('department', '==', departmentFilter));
+    }
+
+    const q = constraints.length ? query(traineesRef, ...constraints) : traineesRef;
 
     return from(
       getDocs(q).then((snapshot) => {
-        console.log('📦 Trainees snapshot received, size:', snapshot.size);
+        console.log('[PersonnelService] Trainees snapshot size:', snapshot.size);
         const trainees = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         })) as Trainee[];
-        console.log('🎓 Trainees parsed:', trainees.length);
         return trainees;
       })
     );
   }
 
-  getEmployeesByDepartment(companyId?: string | null): Observable<DepartmentGroup<Employee>[]> {
+  getEmployeesByDepartment(
+    companyId?: string | null
+  ): Observable<DepartmentGroup<Employee>[]> {
     return this.getEmployees(companyId).pipe(
       map((employees) => this.groupByDepartment(employees))
     );
   }
 
-  getTraineesByDepartment(companyId?: string | null): Observable<DepartmentGroup<Trainee>[]> {
+  getTraineesByDepartment(
+    companyId?: string | null
+  ): Observable<DepartmentGroup<Trainee>[]> {
     return this.getTrainees(companyId).pipe(
       map((trainees) => this.groupByDepartment(trainees))
     );
