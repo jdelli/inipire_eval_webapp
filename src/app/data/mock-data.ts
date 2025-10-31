@@ -65,6 +65,8 @@ export interface ContributorSpotlight {
 export const employeeSnapshot = {
   name: 'Jordan Chen',
   role: 'Director of Product Strategy',
+  employeeId: 'employee-jordan-chen',
+  traineeRecordId: 'trainee-jordan-chen',
   manager: 'Avery Patel',
   location: 'Seattle, WA',
   tenure: '3.7 years',
