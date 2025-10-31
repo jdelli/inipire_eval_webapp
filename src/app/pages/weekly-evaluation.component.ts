@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PersonnelService } from '../services/personnel.service';
+import { EvaluationService } from '../services/evaluation.service';
 import { Employee, Trainee } from '../models/personnel.model';
 import { forkJoin } from 'rxjs';
 import { StarRatingComponent } from '../components/star-rating/star-rating.component';
@@ -33,6 +34,7 @@ interface DepartmentGroupRow {
 })
 export class WeeklyEvaluationComponent {
   private readonly personnelService = inject(PersonnelService);
+  private readonly evaluationService = inject(EvaluationService);
   private readonly fb = inject(FormBuilder);
 
   readonly employees = signal<Employee[]>([]);
@@ -127,13 +129,26 @@ export class WeeklyEvaluationComponent {
 
   loadPersonnel(): void {
     this.loading.set(true);
+    console.log('🔄 Weekly Evaluation: Starting to load personnel...');
     forkJoin({
       employees: this.personnelService.getEmployees(),
       trainees: this.personnelService.getTrainees(),
     }).subscribe({
       next: ({ employees, trainees }) => {
-        this.employees.set(this.dedupeByKey(employees, (e) => e.id));
-        this.trainees.set(this.dedupeByKey(trainees, (t) => t.id));
+        console.log('✅ Weekly Evaluation: Data loaded', {
+          employeeCount: employees.length,
+          traineeCount: trainees.length,
+        });
+        console.log('📊 Sample employee:', employees[0]);
+        console.log('📊 Sample trainee:', trainees[0]);
+        const dedupedEmployees = this.dedupeByKey(employees, (e) => e.id);
+        const dedupedTrainees = this.dedupeByKey(trainees, (t) => t.id);
+        console.log('After deduplication:', {
+          employeeCount: dedupedEmployees.length,
+          traineeCount: dedupedTrainees.length,
+        });
+        this.employees.set(dedupedEmployees);
+        this.trainees.set(dedupedTrainees);
         this.loading.set(false);
       },
       error: (err) => {
@@ -180,17 +195,47 @@ export class WeeklyEvaluationComponent {
     }
 
     const person = this.selectedPerson();
-    const formValue = this.evaluationForm.getRawValue();
+    if (!person || !person.id) {
+      console.error('❌ Cannot submit evaluation: Invalid person or missing ID');
+      return;
+    }
 
-    console.log('Evaluation submitted for:', {
-      person: this.getFullName(person!),
+    const formValue = this.evaluationForm.getRawValue();
+    const average = this.getAverageRating();
+
+    const evaluationData = {
+      performance: formValue.performance,
+      productivity: formValue.productivity,
+      teamwork: formValue.teamwork,
+      initiative: formValue.initiative,
+      comments: formValue.comments,
+      strengths: formValue.strengths,
+      improvements: formValue.improvements,
+      average: average,
+    };
+
+    console.log('💾 Saving evaluation for:', {
+      person: this.getFullName(person),
       type: this.personType(),
-      evaluation: formValue,
+      data: evaluationData,
     });
 
-    // TODO: Save evaluation to Firebase
+    const saveObservable =
+      this.personType() === 'employee'
+        ? this.evaluationService.saveEmployeeEvaluation(person.id, evaluationData)
+        : this.evaluationService.saveTraineeEvaluation(person.id, evaluationData);
 
-    this.closeModal();
+    saveObservable.subscribe({
+      next: (evaluationId) => {
+        console.log('✅ Evaluation saved successfully with ID:', evaluationId);
+        alert('Evaluation submitted successfully!');
+        this.closeModal();
+      },
+      error: (err) => {
+        console.error('❌ Error saving evaluation:', err);
+        alert('Failed to save evaluation. Please try again.');
+      },
+    });
   }
 
   getFullName(person: Employee | Trainee | null): string {

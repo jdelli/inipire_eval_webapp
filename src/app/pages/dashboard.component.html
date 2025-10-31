@@ -1,42 +1,100 @@
 <div class="space-y-6">
-  <header>
-    <h2 class="text-xl font-semibold tracking-tight text-foreground">Executive Dashboard</h2>
-    <p class="text-muted-foreground">An overview of organizational health and strategic alignment.</p>
+  <header class="flex items-start justify-between gap-2">
+    <div>
+      <h2 class="text-xl font-semibold tracking-tight text-foreground">Executive Dashboard</h2>
+      <p class="text-muted-foreground">An overview of organizational health and strategic alignment.</p>
+    </div>
+    <button
+      type="button"
+      class="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2 py-1 text-xs text-muted-foreground transition hover:text-foreground"
+      (click)="toggleSection('kpis')"
+      [attr.aria-expanded]="!isCollapsed('kpis')"
+      title="Collapse/expand overview"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="size-4 transition-transform" [style.transform]="isCollapsed('kpis') ? 'rotate(180deg)' : 'rotate(0deg)'"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>{{ isCollapsed('kpis') ? 'Expand' : 'Collapse' }}</span>
+    </button>
   </header>
 
-  <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+  <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" *ngIf="!isCollapsed('kpis')">
     <article class="flex flex-col justify-between rounded-2xl border bg-card/80 p-5 shadow-sm">
       <p class="text-sm font-medium text-muted-foreground">Total Employees</p>
       <p class="mt-2 text-3xl font-semibold tracking-tight">{{ employeeSummary().total }}</p>
-    </article>
-    <article class="flex flex-col justify-between rounded-2xl border bg-card/80 p-5 shadow-sm">
-      <p class="text-sm font-medium text-muted-foreground">Active Employees</p>
-      <p class="mt-2 text-3xl font-semibold tracking-tight">{{ employeeSummary().counts['active'] }}</p>
     </article>
     <article class="flex flex-col justify-between rounded-2xl border bg-card/80 p-5 shadow-sm">
       <p class="text-sm font-medium text-muted-foreground">Total Trainees</p>
       <p class="mt-2 text-3xl font-semibold tracking-tight">{{ traineeSummary().total }}</p>
     </article>
     <article class="flex flex-col justify-between rounded-2xl border bg-card/80 p-5 shadow-sm">
-      <p class="text-sm font-medium text-muted-foreground">Completed Trainees</p>
-      <p class="mt-2 text-3xl font-semibold tracking-tight">{{ traineeSummary().counts['completed'] }}</p>
+      <p class="text-sm font-medium text-muted-foreground">Total Evaluations</p>
+      <p class="mt-2 text-3xl font-semibold tracking-tight">{{ allEvaluations().length }}</p>
+    </article>
+    <article class="flex flex-col justify-between rounded-2xl border bg-card/80 p-5 shadow-sm">
+      <p class="text-sm font-medium text-muted-foreground">Avg. Rating</p>
+      <p class="mt-2 text-3xl font-semibold tracking-tight">
+        {{ overallAverageRating() }}/5.0
+      </p>
     </article>
   </section>
 
-  <section class="grid gap-6 lg:grid-cols-2">
+  <section class="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
     <article class="rounded-2xl border bg-card/80 p-6 shadow-sm">
-      <h3 class="text-lg font-semibold tracking-tight">Employee Status Distribution</h3>
-      <p class="text-sm text-muted-foreground">Breakdown of current employee statuses.</p>
-      <div class="mt-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-semibold tracking-tight">Employee Status</h3>
+          <p class="text-sm text-muted-foreground">Status breakdown</p>
+        </div>
+        <button type="button" class="rounded-lg border border-input bg-background p-1 text-muted-foreground transition hover:text-foreground" (click)="toggleSection('employeeStatus')" [attr.aria-expanded]="!isCollapsed('employeeStatus')" title="Collapse">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="size-4 transition-transform" [style.transform]="isCollapsed('employeeStatus') ? 'rotate(180deg)' : 'rotate(0deg)'"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <div class="mt-4" *ngIf="!isCollapsed('employeeStatus')">
         <app-status-chart [data]="employeeChartData()"></app-status-chart>
       </div>
     </article>
 
     <article class="rounded-2xl border bg-card/80 p-6 shadow-sm">
-      <h3 class="text-lg font-semibold tracking-tight">Trainee Progress Distribution</h3>
-      <p class="text-sm text-muted-foreground">Breakdown of current trainee progress.</p>
-      <div class="mt-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-semibold tracking-tight">Trainee Progress</h3>
+          <p class="text-sm text-muted-foreground">Progress breakdown</p>
+        </div>
+        <button type="button" class="rounded-lg border border-input bg-background p-1 text-muted-foreground transition hover:text-foreground" (click)="toggleSection('traineeProgress')" [attr.aria-expanded]="!isCollapsed('traineeProgress')" title="Collapse">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="size-4 transition-transform" [style.transform]="isCollapsed('traineeProgress') ? 'rotate(180deg)' : 'rotate(0deg)'"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <div class="mt-4" *ngIf="!isCollapsed('traineeProgress')">
         <app-status-chart [data]="traineeChartData()"></app-status-chart>
+      </div>
+    </article>
+
+    <article class="rounded-2xl border bg-card/80 p-6 shadow-sm">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-semibold tracking-tight">Rating Distribution</h3>
+          <p class="text-sm text-muted-foreground">Evaluation ratings</p>
+        </div>
+        <button type="button" class="rounded-lg border border-input bg-background p-1 text-muted-foreground transition hover:text-foreground" (click)="toggleSection('ratingDistribution')" [attr.aria-expanded]="!isCollapsed('ratingDistribution')" title="Collapse">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="size-4 transition-transform" [style.transform]="isCollapsed('ratingDistribution') ? 'rotate(180deg)' : 'rotate(0deg)'"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <div class="mt-4" *ngIf="!isCollapsed('ratingDistribution')">
+        <app-status-chart [data]="averageRatingTrend()"></app-status-chart>
+      </div>
+    </article>
+
+    <article class="rounded-2xl border bg-card/80 p-6 shadow-sm">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-semibold tracking-tight">Department Performance</h3>
+          <p class="text-sm text-muted-foreground">Average by department</p>
+        </div>
+        <button type="button" class="rounded-lg border border-input bg-background p-1 text-muted-foreground transition hover:text-foreground" (click)="toggleSection('departmentPerformance')" [attr.aria-expanded]="!isCollapsed('departmentPerformance')" title="Collapse">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="size-4 transition-transform" [style.transform]="isCollapsed('departmentPerformance') ? 'rotate(180deg)' : 'rotate(0deg)'"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <div class="mt-4" *ngIf="!isCollapsed('departmentPerformance')">
+        <app-status-chart [data]="departmentPerformance()"></app-status-chart>
       </div>
     </article>
   </section>
@@ -48,11 +106,16 @@
           <h3 class="text-lg font-semibold tracking-tight">Recent Evaluations</h3>
           <p class="text-sm text-muted-foreground">Latest performance reviews submitted.</p>
         </div>
-        <a routerLink="/weekly-evaluation" class="text-sm font-medium text-primary hover:underline">
-          View All
-        </a>
+        <div class="flex items-center gap-2">
+          <button type="button" class="rounded-lg border border-input bg-background p-1 text-muted-foreground transition hover:text-foreground" (click)="toggleSection('recentEvaluations')" [attr.aria-expanded]="!isCollapsed('recentEvaluations')" title="Collapse">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="size-4 transition-transform" [style.transform]="isCollapsed('recentEvaluations') ? 'rotate(180deg)' : 'rotate(0deg)'"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <a routerLink="/weekly-evaluation" class="text-sm font-medium text-primary hover:underline">
+            View All
+          </a>
+        </div>
       </div>
-      <div class="mt-4 space-y-3">
+      <div class="mt-4 space-y-3" *ngIf="!isCollapsed('recentEvaluations')">
         <div *ngFor="let eval of recentEvaluations()" class="flex items-center gap-4 rounded-xl border bg-background/60 p-3">
           <img [src]="eval.avatar" [alt]="eval.name" class="size-10 rounded-full object-cover" />
           <div class="flex-1">
@@ -71,9 +134,16 @@
     </article>
 
     <article class="rounded-2xl border bg-card/80 p-6 shadow-sm">
-      <h3 class="text-lg font-semibold tracking-tight">Top Performers</h3>
-      <p class="text-sm text-muted-foreground">Employees and trainees with the highest recent ratings.</p>
-      <div class="mt-4 space-y-3">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-semibold tracking-tight">Top Performers</h3>
+          <p class="text-sm text-muted-foreground">Employees and trainees with the highest recent ratings.</p>
+        </div>
+        <button type="button" class="rounded-lg border border-input bg-background p-1 text-muted-foreground transition hover:text-foreground" (click)="toggleSection('topPerformers')" [attr.aria-expanded]="!isCollapsed('topPerformers')" title="Collapse">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="size-4 transition-transform" [style.transform]="isCollapsed('topPerformers') ? 'rotate(180deg)' : 'rotate(0deg)'"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <div class="mt-4 space-y-3" *ngIf="!isCollapsed('topPerformers')">
         <div *ngFor="let performer of topPerformers()" class="flex items-center gap-3 rounded-xl border bg-background/60 p-3">
           <span class="flex size-10 items-center justify-center rounded-full bg-primary/10 text-lg font-bold text-primary">
             {{ performer.rank }}
@@ -84,7 +154,7 @@
           </div>
           <div class="text-right">
             <p class="font-semibold text-primary">{{ performer.average.toFixed(1) }}</p>
-            <p class="text-xs text-muted-foreground">Avg. Rating</p>
+            <p class="text-xs text-muted-foreground">{{ performer.evaluationCount }} eval{{ performer.evaluationCount !== 1 ? 's' : '' }}</p>
           </div>
         </div>
         <div *ngIf="topPerformers().length === 0" class="py-8 text-center text-sm text-muted-foreground">

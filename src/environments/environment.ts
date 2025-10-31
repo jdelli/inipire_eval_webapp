@@ -9,5 +9,5 @@ export const environment = {
     appId: '1:857746471796:web:9ea0c7060d0784bd8d0a21',
     measurementId: 'G-3YEJYQW53V',
   },
-  defaultCompanyId: 'inspire-next',
+  defaultCompanyId: 'inspire-holdings',
 };

@@ -1,7 +1,11 @@
 <div class="min-h-screen bg-muted/40 text-sm text-foreground antialiased">
   <div class="flex min-h-screen">
-    <aside class="hidden w-72 flex-col border-r bg-background/95 backdrop-blur lg:flex">
-      <div class="flex items-center gap-3 px-6 py-6">
+    <aside
+      class="hidden flex-col border-r bg-background/95 backdrop-blur transition-all duration-200 lg:flex"
+      [class.w-20]="sidebarCollapsed()"
+      [class.w-72]="!sidebarCollapsed()"
+    >
+      <div class="flex items-center gap-3 px-6 py-6" [class.justify-center]="sidebarCollapsed()">
         <div class="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -15,7 +19,7 @@
             <path d="M8 13h8M8 17h5" stroke-linecap="round" />
           </svg>
         </div>
-        <div>
+        <div *ngIf="!sidebarCollapsed()">
           <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Executive Evaluation
           </p>
@@ -23,14 +27,16 @@
         </div>
       </div>
 
-      <nav class="flex-1 space-y-1 px-4">
+      <nav class="flex-1 space-y-1 px-2">
         <ng-container *ngFor="let item of navItems; trackBy: trackByRoute">
           <a
             [routerLink]="item.route"
             routerLinkActive="bg-muted text-foreground"
             [routerLinkActiveOptions]="{ exact: true }"
             (click)="closeMobileNav()"
-            class="group flex flex-col gap-1 rounded-xl px-3 py-2 transition-colors"
+            class="group flex flex-col gap-1 rounded-xl transition-colors"
+            [ngClass]="sidebarCollapsed() ? 'px-2 py-2' : 'px-3 py-2'"
+            [attr.title]="sidebarCollapsed() ? item.label : null"
             [class.bg-muted]="activeNav().route === item.route"
             [class.text-foreground]="activeNav().route === item.route"
             [class.text-muted-foreground]="activeNav().route !== item.route"
@@ -117,7 +123,7 @@
                 </svg>
               </div>
 
-              <div>
+              <div *ngIf="!sidebarCollapsed()">
                 <div class="flex items-center gap-2">
                   <span class="text-sm font-semibold tracking-tight">{{ item.label }}</span>
                   <span
@@ -136,7 +142,7 @@
         </ng-container>
       </nav>
 
-      <div class="mt-auto border-t px-6 py-6">
+      <div class="mt-auto border-t px-6 py-6" *ngIf="!sidebarCollapsed()">
         <div class="rounded-2xl border bg-card/60 p-4 shadow-sm">
           <div class="flex items-center gap-3">
             <img
@@ -169,6 +175,11 @@
           </dl>
         </div>
       </div>
+      <div class="mt-auto border-t px-4 py-4" *ngIf="sidebarCollapsed()">
+        <div class="flex items-center justify-center">
+          <img [src]="snapshot.avatar" alt="Me" class="size-10 rounded-full object-cover ring-2 ring-primary/20" />
+        </div>
+      </div>
     </aside>
 
     <div class="flex flex-1 flex-col">
@@ -186,6 +197,19 @@
                 class="size-6 text-muted-foreground"
               >
                 <path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" />
+              </svg>
+            </button>
+            <button type="button" class="inline-flex items-center justify-center rounded-lg border border-input bg-background p-2 text-muted-foreground transition hover:text-foreground" (click)="toggleSidebar()">
+              <span class="sr-only">Toggle sidebar</span>
+              <svg *ngIf="!sidebarCollapsed()" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="size-5">
+                <path d="M3 5h18M3 19h18" opacity=".3" />
+                <rect x="3" y="7" width="6" height="10" rx="1.5" />
+                <path d="M14 12l-3 3m3-3-3-3" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <svg *ngIf="sidebarCollapsed()" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="size-5">
+                <path d="M3 5h18M3 19h18" opacity=".3" />
+                <rect x="3" y="7" width="6" height="10" rx="1.5" />
+                <path d="M11 12l3 3m-3-3 3-3" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
             </button>
             <div>
