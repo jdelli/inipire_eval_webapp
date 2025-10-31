@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, computed, signal } from '@angular/core';
 import { ratings } from '../data/mock-data';
 
 interface ThemeCard {
@@ -20,10 +20,72 @@ interface FeedbackSnippet {
   standalone: true,
   imports: [CommonModule],
   templateUrl: './ratings.component.html',
-  styles: ``,
+  styles: `
+    /* Soft vignette gradient background similar to Employees tab */
+    .audit-hero {
+      background-image: radial-gradient(1200px 400px at 20% 0%, #eef6ff 0%, rgba(255,255,255,0.9) 40%, rgba(255,255,255,1) 60%);
+    }
+
+    /* Shimmer for stat cards */
+    .shimmer {
+      position: relative;
+      overflow: hidden;
+    }
+    .shimmer::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      transform: translateX(-100%);
+      background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,0) 100%);
+      animation: shimmer 2.2s infinite;
+    }
+    @keyframes shimmer {
+      100% { transform: translateX(100%); }
+    }
+  `,
 })
 export class RatingsComponent {
   readonly ratings = ratings;
+
+  // Sorting & paging controls
+  readonly sortKey = signal<'category' | 'score'>('category');
+  readonly sortDir = signal<'asc' | 'desc'>('asc');
+  readonly rowsPerPage = signal<number>(20);
+  readonly currentPage = signal<number>(1);
+
+  readonly sortedRatings = computed(() => {
+    const key = this.sortKey();
+    const dir = this.sortDir();
+    const mul = dir === 'asc' ? 1 : -1;
+    return [...this.ratings].sort((a, b) => {
+      if (key === 'category') {
+        return a.category.localeCompare(b.category) * mul;
+      }
+      return (a.score - b.score) * mul;
+    });
+  });
+
+  readonly paginatedRatings = computed(() => {
+    const page = this.currentPage();
+    const size = this.rowsPerPage();
+    const start = (page - 1) * size;
+    return this.sortedRatings().slice(start, start + size);
+  });
+
+  setSort(key: 'category' | 'score') {
+    if (this.sortKey() === key) {
+      this.sortDir.set(this.sortDir() === 'asc' ? 'desc' : 'asc');
+    } else {
+      this.sortKey.set(key);
+      this.sortDir.set('asc');
+    }
+    this.currentPage.set(1);
+  }
+
+  setRows(size: number) {
+    this.rowsPerPage.set(size);
+    this.currentPage.set(1);
+  }
 
   readonly strengthThemes: ThemeCard[] = [
     {
@@ -94,5 +156,18 @@ export class RatingsComponent {
   get highestCategory(): string {
     const [top] = [...this.ratings].sort((a, b) => b.score - a.score);
     return top?.category ?? '';
+  }
+
+  // UI stats for header cards
+  get inViewCount(): number {
+    return this.ratings.length;
+  }
+
+  get totalRecordsCount(): number {
+    return this.ratings.length;
+  }
+
+  get categoryCount(): number {
+    return new Set(this.ratings.map((r) => r.category)).size;
   }
 }
