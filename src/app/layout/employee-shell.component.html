@@ -1,0 +1,151 @@
+<div class="min-h-screen bg-muted/40 text-sm text-foreground antialiased">
+  <header class="sticky top-0 z-30 border-b bg-background/90 backdrop-blur">
+    <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 md:px-6">
+      <div class="flex items-center gap-3">
+        <img [src]="snapshot.avatar" alt="Me" class="size-9 rounded-lg object-cover" />
+        <div>
+          <p class="text-xs text-muted-foreground">Employee Workspace</p>
+          <h1 class="text-base font-semibold">{{ snapshot.name }}</h1>
+        </div>
+      </div>
+      <nav class="hidden gap-1 md:flex">
+        <a
+          *ngFor="let item of navItems"
+          [routerLink]="item.route"
+          routerLinkActive="bg-muted text-foreground"
+          [routerLinkActiveOptions]="{ exact: true }"
+          class="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground"
+          [class.bg-muted]="activeNav().route === item.route"
+        >
+          <span class="sr-only">{{ item.label }}</span>
+          <svg *ngIf="item.icon === 'grid'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="size-4">
+            <rect x="3" y="3" width="7" height="7" rx="1.5" />
+            <rect x="14" y="3" width="7" height="7" rx="1.5" />
+            <rect x="14" y="14" width="7" height="7" rx="1.5" />
+            <rect x="3" y="14" width="7" height="7" rx="1.5" />
+          </svg>
+          <svg *ngIf="item.icon === 'calendar'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="size-4">
+            <path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14H4z" />
+            <path d="M16 3v4M8 3v4" stroke-linecap="round" />
+            <path d="M4 11h16" />
+          </svg>
+          <svg *ngIf="item.icon === 'star'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="size-4">
+            <path d="m12 3 2.52 5.11L20 9.27l-4 3.89.95 5.56L12 16.77l-4.95 1.95L8 13.16l-4-3.89 5.48-.16z" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <svg *ngIf="item.icon === 'shield'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="size-4">
+            <path d="M12 3 4.5 6v5.4c0 5.2 3.43 9.9 7.5 10.6 4.07-.7 7.5-5.4 7.5-10.6V6z" stroke-linejoin="round" />
+            <path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span class="hidden sm:inline">{{ item.label }}</span>
+        </a>
+      </nav>
+      <div class="text-xs text-muted-foreground">{{ tagline() }}</div>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-6xl px-4 py-6 md:px-6">
+    <section class="mb-6 rounded-2xl border bg-card/80 p-6 shadow-sm">
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 class="text-lg font-semibold text-foreground">Daily report</h2>
+          <p class="text-xs text-muted-foreground">
+            Log what you accomplished each hour to keep your lead in the loop.
+          </p>
+        </div>
+        <button
+          type="button"
+          class="hidden rounded-full border border-input px-3 py-1 text-xs text-muted-foreground transition hover:text-foreground sm:inline-flex"
+          (click)="resetForm()"
+        >
+          Reset form
+        </button>
+      </div>
+
+      <form
+        class="mt-4 grid gap-3 sm:grid-cols-[minmax(0,140px)_1fr_auto]"
+        [formGroup]="entryForm"
+        (ngSubmit)="submitEntry()"
+      >
+        <label class="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          Hour
+          <select
+            formControlName="hour"
+            class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none ring-primary/20 transition focus:ring-2"
+          >
+            <option *ngFor="let slot of timeSlots" [value]="slot">{{ slot }}</option>
+          </select>
+        </label>
+
+        <label class="flex flex-col gap-1 text-xs font-medium text-muted-foreground sm:col-span-1">
+          What did you work on?
+          <textarea
+            formControlName="activity"
+            rows="2"
+            placeholder="Draft release notes, resolved customer escalations, paired with QA..."
+            class="min-h-[2.75rem] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none ring-primary/20 transition focus:ring-2"
+          ></textarea>
+        </label>
+
+        <div class="flex items-stretch justify-end gap-2 sm:flex-col">
+          <button
+            type="submit"
+            class="flex-1 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+          >
+            {{ editingHour() ? 'Update hour' : 'Add hour' }}
+          </button>
+          <button
+            type="button"
+            class="flex-1 rounded-lg border border-input px-4 py-2 text-sm font-semibold text-muted-foreground transition hover:text-foreground sm:hidden"
+            (click)="resetForm()"
+          >
+            Clear
+          </button>
+        </div>
+      </form>
+
+      <div *ngIf="entries().length; else emptyReport" class="mt-5 overflow-hidden rounded-2xl border">
+        <table class="min-w-full divide-y divide-border text-sm">
+          <thead class="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+            <tr>
+              <th class="px-4 py-3 text-left font-medium">Hour</th>
+              <th class="px-4 py-3 text-left font-medium">Summary</th>
+              <th class="px-4 py-3 text-right font-medium">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border bg-background/70">
+            <tr *ngFor="let entry of entries()" class="align-top">
+              <td class="px-4 py-3 font-semibold text-foreground">{{ entry.hour }}</td>
+              <td class="px-4 py-3 text-sm text-muted-foreground">{{ entry.activity }}</td>
+              <td class="px-4 py-3">
+                <div class="flex items-center justify-end gap-2 text-xs font-semibold">
+                  <button
+                    type="button"
+                    class="rounded-lg border border-input px-2.5 py-1 text-muted-foreground transition hover:text-foreground"
+                    (click)="editEntry(entry)"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-lg border border-destructive/40 px-2.5 py-1 text-destructive transition hover:bg-destructive/10"
+                    (click)="removeEntry(entry.hour)"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <ng-template #emptyReport>
+        <div class="mt-5 rounded-2xl border border-dashed border-input bg-background/70 px-6 py-10 text-center text-sm text-muted-foreground">
+          No entries yet. Add what you accomplished this hour so your lead sees steady progress.
+        </div>
+      </ng-template>
+    </section>
+
+    <router-outlet></router-outlet>
+  </main>
+</div>

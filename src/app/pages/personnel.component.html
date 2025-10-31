@@ -1,0 +1,149 @@
+<div class="space-y-6">
+  <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h2 class="text-2xl font-semibold tracking-tight text-foreground">Personnel Directory</h2>
+      <p class="text-sm text-muted-foreground">
+        Employees and trainees organized by department
+      </p>
+    </div>
+
+    <div class="flex gap-2 rounded-lg border bg-muted/60 p-1">
+      <button
+        type="button"
+        class="rounded-md px-4 py-2 text-sm font-medium transition"
+        [class.bg-background]="activeTab() === 'employees'"
+        [class.text-foreground]="activeTab() === 'employees'"
+        [class.shadow-sm]="activeTab() === 'employees'"
+        [class.text-muted-foreground]="activeTab() !== 'employees'"
+        (click)="setTab('employees')"
+      >
+        Employees ({{ getTotalCount(employeeGroups()) }})
+      </button>
+      <button
+        type="button"
+        class="rounded-md px-4 py-2 text-sm font-medium transition"
+        [class.bg-background]="activeTab() === 'trainees'"
+        [class.text-foreground]="activeTab() === 'trainees'"
+        [class.shadow-sm]="activeTab() === 'trainees'"
+        [class.text-muted-foreground]="activeTab() !== 'trainees'"
+        (click)="setTab('trainees')"
+      >
+        Trainees ({{ getTotalCount(traineeGroups()) }})
+      </button>
+    </div>
+  </header>
+
+  <div *ngIf="loading()" class="flex items-center justify-center py-20">
+    <div class="flex flex-col items-center gap-3">
+      <div class="size-10 animate-spin rounded-full border-4 border-muted border-t-primary"></div>
+      <p class="text-sm text-muted-foreground">Loading personnel data...</p>
+    </div>
+  </div>
+
+  <div *ngIf="!loading() && activeTab() === 'employees'" class="space-y-6">
+    <div
+      *ngFor="let group of employeeGroups()"
+      class="rounded-2xl border bg-card/80 p-6 shadow-sm"
+    >
+      <div class="mb-4 flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-foreground">{{ group.department }}</h3>
+        <span
+          class="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
+        >
+          {{ group.members.length }} {{ group.members.length === 1 ? 'employee' : 'employees' }}
+        </span>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <article
+          *ngFor="let employee of group.members"
+          class="flex gap-3 rounded-xl border bg-background/70 p-4 transition hover:border-primary/20"
+        >
+          <img
+            [src]="employee.photoURL || 'https://ui-avatars.com/api/?name=' + getFullName(employee)"
+            [alt]="getFullName(employee)"
+            class="size-12 rounded-lg object-cover"
+          />
+          <div class="flex-1 space-y-1">
+            <p class="text-sm font-semibold text-foreground">{{ getFullName(employee) }}</p>
+            <p class="text-xs text-muted-foreground">{{ employee.position }}</p>
+            <div class="flex items-center gap-2 text-xs">
+              <span
+                class="rounded-full px-2 py-0.5 font-medium"
+                [ngClass]="{
+                  'bg-emerald-500/10 text-emerald-600': employee.status === 'Active',
+                  'bg-amber-500/10 text-amber-600': employee.status === 'Inactive',
+                  'bg-blue-500/10 text-blue-600': employee.employmentType === 'Probationary'
+                }"
+              >
+                {{ employee.employmentType }}
+              </span>
+              <span class="text-muted-foreground">ID: {{ employee.idNumber }}</span>
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>
+
+    <div
+      *ngIf="!employeeGroups().length"
+      class="rounded-2xl border border-dashed bg-muted/40 px-6 py-12 text-center"
+    >
+      <p class="text-sm text-muted-foreground">No employees found</p>
+    </div>
+  </div>
+
+  <div *ngIf="!loading() && activeTab() === 'trainees'" class="space-y-6">
+    <div
+      *ngFor="let group of traineeGroups()"
+      class="rounded-2xl border bg-card/80 p-6 shadow-sm"
+    >
+      <div class="mb-4 flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-foreground">{{ group.department }}</h3>
+        <span
+          class="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
+        >
+          {{ group.members.length }} {{ group.members.length === 1 ? 'trainee' : 'trainees' }}
+        </span>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <article
+          *ngFor="let trainee of group.members"
+          class="flex gap-3 rounded-xl border bg-background/70 p-4 transition hover:border-primary/20"
+        >
+          <img
+            [src]="trainee.profilePicture || 'https://ui-avatars.com/api/?name=' + getFullName(trainee)"
+            [alt]="getFullName(trainee)"
+            class="size-12 rounded-lg object-cover"
+          />
+          <div class="flex-1 space-y-1">
+            <p class="text-sm font-semibold text-foreground">{{ getFullName(trainee) }}</p>
+            <p class="text-xs text-muted-foreground">{{ trainee.position }}</p>
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+              <span
+                class="rounded-full px-2 py-0.5 font-medium"
+                [ngClass]="{
+                  'bg-emerald-500/10 text-emerald-600': trainee.status === 'Active',
+                  'bg-amber-500/10 text-amber-600': trainee.status === 'Transferred',
+                  'bg-blue-500/10 text-blue-600': trainee.progressStatus === 'In Progress'
+                }"
+              >
+                {{ trainee.progressStatus }}
+              </span>
+              <span class="text-muted-foreground">{{ trainee.progressPercentage }}%</span>
+            </div>
+            <p class="text-xs text-muted-foreground">ID: {{ trainee.employeeId }}</p>
+          </div>
+        </article>
+      </div>
+    </div>
+
+    <div
+      *ngIf="!traineeGroups().length"
+      class="rounded-2xl border border-dashed bg-muted/40 px-6 py-12 text-center"
+    >
+      <p class="text-sm text-muted-foreground">No trainees found</p>
+    </div>
+  </div>
+</div>

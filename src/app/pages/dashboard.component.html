@@ -1,0 +1,96 @@
+<div class="space-y-6">
+  <header>
+    <h2 class="text-xl font-semibold tracking-tight text-foreground">Executive Dashboard</h2>
+    <p class="text-muted-foreground">An overview of organizational health and strategic alignment.</p>
+  </header>
+
+  <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <article class="flex flex-col justify-between rounded-2xl border bg-card/80 p-5 shadow-sm">
+      <p class="text-sm font-medium text-muted-foreground">Total Employees</p>
+      <p class="mt-2 text-3xl font-semibold tracking-tight">{{ employeeSummary().total }}</p>
+    </article>
+    <article class="flex flex-col justify-between rounded-2xl border bg-card/80 p-5 shadow-sm">
+      <p class="text-sm font-medium text-muted-foreground">Active Employees</p>
+      <p class="mt-2 text-3xl font-semibold tracking-tight">{{ employeeSummary().counts['active'] }}</p>
+    </article>
+    <article class="flex flex-col justify-between rounded-2xl border bg-card/80 p-5 shadow-sm">
+      <p class="text-sm font-medium text-muted-foreground">Total Trainees</p>
+      <p class="mt-2 text-3xl font-semibold tracking-tight">{{ traineeSummary().total }}</p>
+    </article>
+    <article class="flex flex-col justify-between rounded-2xl border bg-card/80 p-5 shadow-sm">
+      <p class="text-sm font-medium text-muted-foreground">Completed Trainees</p>
+      <p class="mt-2 text-3xl font-semibold tracking-tight">{{ traineeSummary().counts['completed'] }}</p>
+    </article>
+  </section>
+
+  <section class="grid gap-6 lg:grid-cols-2">
+    <article class="rounded-2xl border bg-card/80 p-6 shadow-sm">
+      <h3 class="text-lg font-semibold tracking-tight">Employee Status Distribution</h3>
+      <p class="text-sm text-muted-foreground">Breakdown of current employee statuses.</p>
+      <div class="mt-4">
+        <app-status-chart [data]="employeeChartData()"></app-status-chart>
+      </div>
+    </article>
+
+    <article class="rounded-2xl border bg-card/80 p-6 shadow-sm">
+      <h3 class="text-lg font-semibold tracking-tight">Trainee Progress Distribution</h3>
+      <p class="text-sm text-muted-foreground">Breakdown of current trainee progress.</p>
+      <div class="mt-4">
+        <app-status-chart [data]="traineeChartData()"></app-status-chart>
+      </div>
+    </article>
+  </section>
+
+  <section class="grid gap-6 lg:grid-cols-3">
+    <article class="rounded-2xl border bg-card/80 p-6 shadow-sm lg:col-span-2">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-semibold tracking-tight">Recent Evaluations</h3>
+          <p class="text-sm text-muted-foreground">Latest performance reviews submitted.</p>
+        </div>
+        <a routerLink="/weekly-evaluation" class="text-sm font-medium text-primary hover:underline">
+          View All
+        </a>
+      </div>
+      <div class="mt-4 space-y-3">
+        <div *ngFor="let eval of recentEvaluations()" class="flex items-center gap-4 rounded-xl border bg-background/60 p-3">
+          <img [src]="eval.avatar" [alt]="eval.name" class="size-10 rounded-full object-cover" />
+          <div class="flex-1">
+            <p class="font-semibold text-foreground">{{ eval.name }}</p>
+            <p class="text-sm text-muted-foreground">{{ eval.position }}</p>
+          </div>
+          <div class="text-right">
+            <p class="font-semibold text-primary">{{ eval.average.toFixed(1) }}/5.0</p>
+            <p class="text-xs text-muted-foreground">{{ eval.date | date: 'shortDate' }}</p>
+          </div>
+        </div>
+        <div *ngIf="recentEvaluations().length === 0" class="py-8 text-center text-sm text-muted-foreground">
+          No recent evaluations found.
+        </div>
+      </div>
+    </article>
+
+    <article class="rounded-2xl border bg-card/80 p-6 shadow-sm">
+      <h3 class="text-lg font-semibold tracking-tight">Top Performers</h3>
+      <p class="text-sm text-muted-foreground">Employees and trainees with the highest recent ratings.</p>
+      <div class="mt-4 space-y-3">
+        <div *ngFor="let performer of topPerformers()" class="flex items-center gap-3 rounded-xl border bg-background/60 p-3">
+          <span class="flex size-10 items-center justify-center rounded-full bg-primary/10 text-lg font-bold text-primary">
+            {{ performer.rank }}
+          </span>
+          <div class="flex-1">
+            <p class="font-semibold text-foreground">{{ performer.name }}</p>
+            <p class="text-sm text-muted-foreground">{{ performer.department }}</p>
+          </div>
+          <div class="text-right">
+            <p class="font-semibold text-primary">{{ performer.average.toFixed(1) }}</p>
+            <p class="text-xs text-muted-foreground">Avg. Rating</p>
+          </div>
+        </div>
+        <div *ngIf="topPerformers().length === 0" class="py-8 text-center text-sm text-muted-foreground">
+          No top performers yet.
+        </div>
+      </div>
+    </article>
+  </section>
+</div>

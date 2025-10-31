@@ -1,0 +1,286 @@
+<div class="space-y-6">
+  <header class="flex items-center justify-between">
+    <h2 class="text-xl font-semibold tracking-tight text-foreground">Weekly Evaluation</h2>
+    <button
+      type="button"
+      class="flex items-center gap-2 rounded-lg border border-input px-3 py-1.5 text-sm font-semibold text-foreground transition hover:bg-muted"
+      (click)="refreshData()"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="size-4">
+        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M21 3v5h-5" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M3 21v-5h5" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      <span>Refresh</span>
+    </button>
+  </header>
+
+  <div *ngIf="loading()" class="flex items-center justify-center rounded-2xl border bg-card/80 p-12">
+    <div class="flex flex-col items-center gap-3">
+      <div class="size-8 animate-spin rounded-full border-4 border-muted border-t-primary"></div>
+      <p class="text-sm text-muted-foreground">Loading personnel...</p>
+    </div>
+  </div>
+
+  <div *ngIf="!loading()" class="space-y-6">
+    <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card/80 px-4 py-3 text-sm text-muted-foreground">
+      <span class="font-medium text-foreground">{{ rows().length }} total records</span>
+      <div class="flex items-center gap-4">
+        <span>Employees: {{ employees().length }}</span>
+        <span>Trainees: {{ trainees().length }}</span>
+      </div>
+    </div>
+
+    <div class="grid gap-6 xl:grid-cols-2">
+      <section class="flex flex-col rounded-2xl border bg-card/80 shadow-sm">
+        <div class="border-b px-6 py-4">
+          <h3 class="text-lg font-semibold text-foreground">Employees</h3>
+          <p class="text-sm text-muted-foreground">Evaluate weekly performance of employees.</p>
+        </div>
+        <div class="p-6">
+          <div class="relative">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground">
+              <path d="m21 21-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Filter employees..."
+              class="w-full rounded-lg border bg-transparent py-2 pl-10 pr-4 text-sm placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20"
+              (input)="employeeFilter.set($any($event.target).value)"
+            />
+          </div>
+        </div>
+        <div class="flex-1 overflow-y-auto px-6 pb-6">
+          <div *ngIf="filteredEmployeeGroups().length; else noEmployees" class="space-y-5">
+            <div *ngFor="let group of filteredEmployeeGroups()" class="rounded-xl border bg-background/70">
+              <header class="flex items-center justify-between border-b px-4 py-3">
+                <h4 class="text-sm font-semibold text-foreground">{{ group.department || 'Unassigned' }}</h4>
+                <span class="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{{ group.members.length }} team{{ group.members.length === 1 ? '' : ' members' }}</span>
+              </header>
+              <ul class="divide-y divide-border">
+                <li *ngFor="let row of group.members" class="flex items-center justify-between p-4 hover:bg-muted/40">
+                  <div class="flex items-center gap-3">
+                    <img [src]="row.avatar || 'https://ui-avatars.com/api/?name=' + row.name" [alt]="row.name" class="size-9 rounded-full object-cover" />
+                    <div>
+                      <p class="font-medium text-foreground">{{ row.name }}</p>
+                      <p class="text-sm text-muted-foreground">{{ row.position }}</p>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-4">
+                    <span class="rounded-full px-2 py-0.5 text-xs"
+                      [ngClass]="{
+                        'bg-emerald-500/10 text-emerald-600': row.status === 'Active' || row.status === 'In Progress',
+                        'bg-amber-500/10 text-amber-600': row.status === 'Transferred' || row.status === 'Watch',
+                        'bg-rose-500/10 text-rose-600': row.status === 'Inactive' || row.status === 'At risk'
+                      }"
+                    >
+                      {{ row.status || '—' }}
+                    </span>
+                    <button
+                      type="button"
+                      class="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                      (click)="openEvaluationModal(row.raw, 'employee')"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="size-5">
+                        <path d="M12 20h9" stroke-linecap="round" stroke-linejoin="round" />
+                        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </button>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <ng-template #noEmployees>
+            <div class="py-12 text-center text-sm text-muted-foreground">No employees found.</div>
+          </ng-template>
+        </div>
+      </section>
+
+      <section class="flex flex-col rounded-2xl border bg-card/80 shadow-sm">
+        <div class="border-b px-6 py-4">
+          <h3 class="text-lg font-semibold text-foreground">Trainees</h3>
+          <p class="text-sm text-muted-foreground">Evaluate weekly performance of trainees.</p>
+        </div>
+        <div class="p-6">
+          <div class="relative">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground">
+              <path d="m21 21-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Filter trainees..."
+              class="w-full rounded-lg border bg-transparent py-2 pl-10 pr-4 text-sm placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20"
+              (input)="traineeFilter.set($any($event.target).value)"
+            />
+          </div>
+        </div>
+        <div class="flex-1 overflow-y-auto px-6 pb-6">
+          <div *ngIf="filteredTraineeGroups().length; else noTrainees" class="space-y-5">
+            <div *ngFor="let group of filteredTraineeGroups()" class="rounded-xl border bg-background/70">
+              <header class="flex items-center justify-between border-b px-4 py-3">
+                <h4 class="text-sm font-semibold text-foreground">{{ group.department || 'Unassigned' }}</h4>
+                <span class="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{{ group.members.length }} trainee{{ group.members.length === 1 ? '' : 's' }}</span>
+              </header>
+              <ul class="divide-y divide-border">
+                <li *ngFor="let row of group.members" class="flex items-center justify-between p-4 hover:bg-muted/40">
+                  <div class="flex items-center gap-3">
+                    <img [src]="row.avatar || 'https://ui-avatars.com/api/?name=' + row.name" [alt]="row.name" class="size-9 rounded-full object-cover" />
+                    <div>
+                      <p class="font-medium text-foreground">{{ row.name }}</p>
+                      <p class="text-sm text-muted-foreground">{{ row.position }}</p>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-4">
+                    <span class="rounded-full px-2 py-0.5 text-xs"
+                      [ngClass]="{
+                        'bg-emerald-500/10 text-emerald-600': row.status === 'Active' || row.status === 'In Progress',
+                        'bg-amber-500/10 text-amber-600': row.status === 'Transferred' || row.status === 'Watch',
+                        'bg-rose-500/10 text-rose-600': row.status === 'Inactive' || row.status === 'At risk',
+                        'bg-blue-500/10 text-blue-600': row.status === 'Completed'
+                      }"
+                    >
+                      {{ row.status || '—' }}
+                    </span>
+                    <button
+                      type="button"
+                      class="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                      (click)="openEvaluationModal(row.raw, 'trainee')"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="size-5">
+                        <path d="M12 20h9" stroke-linecap="round" stroke-linejoin="round" />
+                        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </button>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <ng-template #noTrainees>
+            <div class="py-12 text-center text-sm text-muted-foreground">No trainees found.</div>
+          </ng-template>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- Evaluation Modal -->
+<div
+  *ngIf="showModal()"
+  class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+  (click)="closeModal()"
+>
+  <div
+    class="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border bg-background shadow-xl"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="sticky top-0 z-10 flex items-center justify-between border-b bg-background/95 px-6 py-4 backdrop-blur">
+      <div>
+        <h3 class="text-lg font-semibold text-foreground">
+          Weekly Evaluation
+        </h3>
+        <p class="text-sm text-muted-foreground">
+          {{ getFullName(selectedPerson()) }} · {{ personType() === 'employee' ? 'Employee' : 'Trainee' }}
+        </p>
+      </div>
+      <button
+        type="button"
+        class="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+        (click)="closeModal()"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="size-5">
+          <path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </button>
+    </div>
+
+    <form [formGroup]="evaluationForm" (ngSubmit)="submitEvaluation()" class="space-y-6 p-6">
+      <div class="grid gap-x-8 gap-y-6 sm:grid-cols-2">
+        <div class="space-y-3">
+          <label class="text-sm font-medium text-foreground">Performance</label>
+          <app-star-rating formControlName="performance"></app-star-rating>
+        </div>
+        <div class="space-y-3">
+          <label class="text-sm font-medium text-foreground">Productivity</label>
+          <app-star-rating formControlName="productivity"></app-star-rating>
+        </div>
+        <div class="space-y-3">
+          <label class="text-sm font-medium text-foreground">Teamwork</label>
+          <app-star-rating formControlName="teamwork"></app-star-rating>
+        </div>
+        <div class="space-y-3">
+          <label class="text-sm font-medium text-foreground">Initiative</label>
+          <app-star-rating formControlName="initiative"></app-star-rating>
+        </div>
+      </div>
+
+      <div class="rounded-xl border bg-primary/5 p-4">
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-medium text-foreground">Overall Average</span>
+          <span class="text-2xl font-bold text-primary">{{ getAverageRating().toFixed(1) }}/5</span>
+        </div>
+        <div class="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+          <div
+            class="h-full bg-primary transition-all duration-300"
+            [style.width.%]="(getAverageRating() / 5) * 100"
+          ></div>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-sm font-medium text-foreground">
+          Comments <span class="text-destructive">*</span>
+        </label>
+        <textarea
+          formControlName="comments"
+          rows="4"
+          placeholder="Provide overall feedback on this week's performance..."
+          class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none ring-primary/20 transition focus:ring-2"
+        ></textarea>
+        <p *ngIf="evaluationForm.get('comments')?.invalid && evaluationForm.get('comments')?.touched" class="text-xs text-destructive">
+          Comments are required
+        </p>
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-sm font-medium text-foreground">Strengths</label>
+        <textarea
+          formControlName="strengths"
+          rows="3"
+          placeholder="What did they do particularly well this week?"
+          class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none ring-primary/20 transition focus:ring-2"
+        ></textarea>
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-sm font-medium text-foreground">Areas for Improvement</label>
+        <textarea
+          formControlName="improvements"
+          rows="3"
+          placeholder="What could be improved for next week?"
+          class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none ring-primary/20 transition focus:ring-2"
+        ></textarea>
+      </div>
+
+      <div class="flex gap-3">
+        <button
+          type="submit"
+          [disabled]="evaluationForm.invalid"
+          class="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Submit Evaluation
+        </button>
+        <button
+          type="button"
+          class="rounded-lg border border-input px-4 py-2.5 text-sm font-semibold text-foreground transition hover:bg-muted"
+          (click)="closeModal()"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

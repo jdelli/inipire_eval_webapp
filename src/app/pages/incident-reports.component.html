@@ -1,0 +1,183 @@
+<div class="space-y-10">
+  <section>
+    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <article
+        *ngFor="let metric of incidentMetrics"
+        class="rounded-2xl border bg-card/80 p-5 shadow-sm transition hover:border-primary/20"
+      >
+        <p class="text-xs uppercase tracking-wide text-muted-foreground">
+          {{ metric.label }}
+        </p>
+        <p class="mt-3 text-2xl font-semibold text-foreground">
+          {{ metric.value }}
+        </p>
+        <span
+          class="mt-4 inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide"
+          [ngClass]="{
+            'bg-emerald-500/10 text-emerald-600': metric.status === 'positive',
+            'bg-amber-500/10 text-amber-600': metric.status === 'neutral',
+            'bg-rose-500/10 text-rose-600': metric.status === 'negative'
+          }"
+        >
+          {{ metric.delta }}
+        </span>
+      </article>
+    </div>
+  </section>
+
+  <section class="rounded-3xl border bg-card/80 p-6 shadow-sm">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <h3 class="text-lg font-semibold tracking-tight text-foreground">
+          Active incident portfolio
+        </h3>
+        <p class="text-sm text-muted-foreground">
+          Executive visibility into severity, impact, and recovery actions.
+        </p>
+      </div>
+      <span class="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
+        {{ incidents.length }} total
+      </span>
+    </div>
+
+    <div class="mt-6 overflow-hidden rounded-2xl border">
+      <table class="min-w-full divide-y divide-border text-sm">
+        <thead class="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th class="px-4 py-3 text-left font-semibold">Incident</th>
+            <th class="px-4 py-3 text-left font-semibold">Severity</th>
+            <th class="px-4 py-3 text-left font-semibold">Owner</th>
+            <th class="px-4 py-3 text-left font-semibold">Status</th>
+            <th class="px-4 py-3 text-left font-semibold">Summary</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border bg-background/80">
+          <tr *ngFor="let incident of incidents" class="transition hover:bg-muted/40">
+            <td class="px-4 py-4 align-top">
+              <div class="space-y-1">
+                <p class="font-semibold text-foreground">{{ incident.id }}</p>
+                <p class="text-xs text-muted-foreground">{{ incident.date }}</p>
+                <p class="text-sm text-muted-foreground">{{ incident.title }}</p>
+              </div>
+            </td>
+            <td class="px-4 py-4 align-top">
+              <span
+                class="inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide"
+                [ngClass]="{
+                  'bg-emerald-500/10 text-emerald-600': incident.severity === 'low',
+                  'bg-amber-500/10 text-amber-600': incident.severity === 'medium',
+                  'bg-rose-500/10 text-rose-600': incident.severity === 'high',
+                  'bg-rose-600/15 text-rose-700': incident.severity === 'critical'
+                }"
+              >
+                {{ incident.severity | titlecase }}
+              </span>
+            </td>
+            <td class="px-4 py-4 align-top">
+              <p class="text-sm font-medium text-foreground">{{ incident.owner }}</p>
+            </td>
+            <td class="px-4 py-4 align-top">
+              <span
+                class="inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide"
+                [ngClass]="{
+                  'bg-primary/10 text-primary': incident.status === 'Open',
+                  'bg-amber-500/10 text-amber-600': incident.status === 'Monitoring',
+                  'bg-emerald-500/10 text-emerald-600': incident.status === 'Resolved'
+                }"
+              >
+                {{ incident.status }}
+              </span>
+            </td>
+            <td class="px-4 py-4 align-top">
+              <div class="space-y-2 text-xs text-muted-foreground">
+                <p>{{ incident.summary }}</p>
+                <p class="font-medium text-foreground">Impact</p>
+                <p>{{ incident.impact }}</p>
+                <ul class="space-y-1">
+                  <li *ngFor="let action of incident.actions" class="flex items-start gap-2">
+                    <span class="mt-1 size-1.5 rounded-full bg-primary/70"></span>
+                    <span>{{ action }}</span>
+                  </li>
+                </ul>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="grid gap-6 lg:grid-cols-2">
+    <article class="rounded-3xl border bg-card/80 p-6 shadow-sm">
+      <h3 class="text-lg font-semibold tracking-tight text-foreground">
+        Response playbook
+      </h3>
+      <p class="text-sm text-muted-foreground">
+        Snapshot of active remediation efforts and executive follow-through.
+      </p>
+      <div class="mt-5 space-y-4">
+        <div
+          *ngFor="let item of playbook"
+          class="rounded-2xl border border-transparent bg-background/70 p-4 transition hover:border-primary/20"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="text-xs uppercase tracking-wide text-muted-foreground">
+                {{ item.due }}
+              </p>
+              <h4 class="text-base font-semibold text-foreground">{{ item.title }}</h4>
+              <p class="mt-2 text-sm text-muted-foreground">
+                {{ item.detail }}
+              </p>
+            </div>
+            <span
+              class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide"
+              [ngClass]="{
+                'bg-primary/10 text-primary': item.status === 'In progress',
+                'bg-emerald-500/10 text-emerald-600': item.status === 'Completed',
+                'bg-muted text-muted-foreground': item.status === 'Planned'
+              }"
+            >
+              {{ item.status }}
+            </span>
+          </div>
+          <p class="mt-3 text-xs font-medium text-foreground">
+            Owner · <span class="text-muted-foreground">{{ item.owner }}</span>
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <article class="rounded-3xl border bg-card/80 p-6 shadow-sm">
+      <h3 class="text-lg font-semibold tracking-tight text-foreground">
+        Executive cadence
+      </h3>
+      <p class="text-sm text-muted-foreground">
+        Ensuring high-signal communication loops stay tight.
+      </p>
+      <ul class="mt-5 space-y-4 text-sm text-muted-foreground">
+        <li class="rounded-2xl border border-transparent bg-background/70 p-4 transition hover:border-primary/20">
+          <p class="text-xs uppercase tracking-wide text-muted-foreground">Daily 8:30 AM</p>
+          <p class="text-base font-semibold text-foreground">Incident stand-up</p>
+          <p class="mt-2 leading-relaxed">
+            15-min status, risk radar, and exec escalations; focuses on restoring customer trust.
+          </p>
+        </li>
+        <li class="rounded-2xl border border-transparent bg-background/70 p-4 transition hover:border-primary/20">
+          <p class="text-xs uppercase tracking-wide text-muted-foreground">Tuesdays 2:00 PM</p>
+          <p class="text-base font-semibold text-foreground">Executive comms review</p>
+          <p class="mt-2 leading-relaxed">
+            Aligns on customer messaging, incident summaries, and board-level updates.
+          </p>
+        </li>
+        <li class="rounded-2xl border border-transparent bg-background/70 p-4 transition hover:border-primary/20">
+          <p class="text-xs uppercase tracking-wide text-muted-foreground">Fridays 11:30 AM</p>
+          <p class="text-base font-semibold text-foreground">Resilience retrospective</p>
+          <p class="mt-2 leading-relaxed">
+            Captures learnings, ensures actions closed, and feeds roadmap prioritization.
+          </p>
+        </li>
+      </ul>
+    </article>
+  </section>
+</div>
