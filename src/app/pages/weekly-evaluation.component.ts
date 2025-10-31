@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PersonnelService } from '../services/personnel.service';
 import { EvaluationService } from '../services/evaluation.service';
 import { Employee, Trainee } from '../models/personnel.model';
 import { forkJoin } from 'rxjs';
 import { StarRatingComponent } from '../components/star-rating/star-rating.component';
+import { PaginatorComponent } from '../components/paginator/paginator.component';
 
 type PersonType = 'employee' | 'trainee';
 interface PersonRow {
@@ -28,9 +29,115 @@ interface DepartmentGroupRow {
 @Component({
   selector: 'app-weekly-evaluation',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, StarRatingComponent],
+  imports: [CommonModule, ReactiveFormsModule, StarRatingComponent, PaginatorComponent],
   templateUrl: './weekly-evaluation.component.html',
-  styles: ``,
+  styles: `
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-4px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes scaleIn {
+      from {
+        opacity: 0;
+        transform: scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .animate-fade-in {
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    .animate-slide-in {
+      animation: slideIn 0.3s ease-out;
+    }
+
+    .animate-scale-in {
+      animation: scaleIn 0.2s ease-out;
+    }
+
+    .row-highlight {
+      position: relative;
+      transition: all 0.2s ease-in-out;
+    }
+
+    .row-highlight::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: linear-gradient(to bottom, transparent, var(--primary), transparent);
+      opacity: 0;
+      transition: opacity 0.2s ease-in-out;
+    }
+
+    .row-highlight:hover::before {
+      opacity: 1;
+    }
+
+    .dept-header {
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.2s ease-in-out;
+    }
+
+    .dept-header:hover {
+      background-color: rgba(0, 0, 0, 0.02);
+    }
+
+    .chevron-icon {
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .status-pulse {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.7;
+      }
+    }
+
+    .evaluate-btn {
+      transition: all 0.2s ease-in-out;
+    }
+
+    .evaluate-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .evaluate-btn:active {
+      transform: translateY(0);
+    }
+  `,
 })
 export class WeeklyEvaluationComponent {
   private readonly personnelService = inject(PersonnelService);
@@ -46,6 +153,13 @@ export class WeeklyEvaluationComponent {
 
   readonly employeeFilter = signal('');
   readonly traineeFilter = signal('');
+
+  readonly employeeCurrentPage = signal(1);
+  readonly traineeCurrentPage = signal(1);
+  readonly itemsPerPage = 20;
+
+  readonly expandedDepartments = signal<Set<string>>(new Set());
+  readonly hoveredRow = signal<string | null>(null);
 
   readonly rows = computed<PersonRow[]>(() => {
     const empRows: PersonRow[] = this.employees().map((e) => ({
@@ -88,25 +202,50 @@ export class WeeklyEvaluationComponent {
     return groups.sort((a, b) => a.department.localeCompare(b.department));
   }
 
-  private filterAndGroup(rows: PersonRow[], filter: string): DepartmentGroupRow[] {
-    const q = filter.trim().toLowerCase();
-    const filteredRows = !q
-      ? rows
-      : rows.filter((row) => {
-          const hay = [row.name, row.position, row.department].join(' ').toLowerCase();
-          return hay.includes(q);
-        });
-    return this.groupRowsByDepartment(filteredRows);
+  private filterRows(rows: PersonRow[], filter: string): PersonRow[] {
+    const query = filter.trim().toLowerCase();
+    if (!query) return rows;
+
+    return rows.filter((row) => {
+      const haystack = [row.name, row.position, row.department].join(' ').toLowerCase();
+      return haystack.includes(query);
+    });
   }
 
-  readonly filteredEmployeeGroups = computed(() => {
+  private paginateRows(rows: PersonRow[], currentPage: number): PersonRow[] {
+    if (!rows.length) return [];
+
+    const maxPage = Math.max(1, Math.ceil(rows.length / this.itemsPerPage));
+    const safePage = Math.min(Math.max(1, currentPage), maxPage);
+    const startIndex = (safePage - 1) * this.itemsPerPage;
+
+    return rows.slice(startIndex, startIndex + this.itemsPerPage);
+  }
+
+  private sortRows(rows: PersonRow[]): PersonRow[] {
+    return rows
+      .slice()
+      .sort((a, b) => a.department.localeCompare(b.department) || a.name.localeCompare(b.name));
+  }
+
+  readonly filteredEmployeeRows = computed(() => {
     const employeeRows = this.rows().filter((row) => row.type === 'Employee');
-    return this.filterAndGroup(employeeRows, this.employeeFilter());
+    return this.sortRows(this.filterRows(employeeRows, this.employeeFilter()));
   });
 
-  readonly filteredTraineeGroups = computed(() => {
+  readonly paginatedEmployeeGroups = computed(() => {
+    const paginatedRows = this.paginateRows(this.filteredEmployeeRows(), this.employeeCurrentPage());
+    return this.groupRowsByDepartment(paginatedRows);
+  });
+
+  readonly filteredTraineeRows = computed(() => {
     const traineeRows = this.rows().filter((row) => row.type === 'Trainee');
-    return this.filterAndGroup(traineeRows, this.traineeFilter());
+    return this.sortRows(this.filterRows(traineeRows, this.traineeFilter()));
+  });
+
+  readonly paginatedTraineeGroups = computed(() => {
+    const paginatedRows = this.paginateRows(this.filteredTraineeRows(), this.traineeCurrentPage());
+    return this.groupRowsByDepartment(paginatedRows);
   });
 
   readonly evaluationForm = this.fb.nonNullable.group({
@@ -121,6 +260,34 @@ export class WeeklyEvaluationComponent {
 
   constructor() {
     this.loadPersonnel();
+
+    effect(() => {
+      const totalPages = Math.max(1, Math.ceil(this.filteredEmployeeRows().length / this.itemsPerPage));
+      const current = this.employeeCurrentPage();
+      if (current > totalPages) {
+        this.employeeCurrentPage.set(totalPages);
+      }
+    });
+
+    effect(() => {
+      const totalPages = Math.max(1, Math.ceil(this.filteredTraineeRows().length / this.itemsPerPage));
+      const current = this.traineeCurrentPage();
+      if (current > totalPages) {
+        this.traineeCurrentPage.set(totalPages);
+      }
+    });
+
+    // Auto-expand departments when data changes
+    effect(() => {
+      const empGroups = this.paginatedEmployeeGroups();
+      const traineeGroups = this.paginatedTraineeGroups();
+      const expanded = new Set<string>();
+
+      empGroups.forEach(g => expanded.add(`employee-${g.department}`));
+      traineeGroups.forEach(g => expanded.add(`trainee-${g.department}`));
+
+      this.expandedDepartments.set(expanded);
+    });
   }
 
   refreshData(): void {
@@ -238,6 +405,51 @@ export class WeeklyEvaluationComponent {
     });
   }
 
+  onEmployeePageChange(page: number): void {
+    const maxPage = Math.max(1, Math.ceil(this.filteredEmployeeRows().length / this.itemsPerPage));
+    const nextPage = Math.min(Math.max(1, page), maxPage);
+    this.employeeCurrentPage.set(nextPage);
+  }
+
+  onTraineePageChange(page: number): void {
+    const maxPage = Math.max(1, Math.ceil(this.filteredTraineeRows().length / this.itemsPerPage));
+    const nextPage = Math.min(Math.max(1, page), maxPage);
+    this.traineeCurrentPage.set(nextPage);
+  }
+
+  onEmployeeFilterChange(value: string): void {
+    this.employeeFilter.set(value);
+    this.employeeCurrentPage.set(1);
+  }
+
+  onTraineeFilterChange(value: string): void {
+    this.traineeFilter.set(value);
+    this.traineeCurrentPage.set(1);
+  }
+
+  getStatusBadgeClass(status?: string | null): string {
+    const normalized = (status || '').trim().toLowerCase();
+
+    switch (normalized) {
+      case 'active':
+      case 'in progress':
+        return 'bg-emerald-500/10 text-emerald-600';
+      case 'scheduled':
+      case 'pending':
+        return 'bg-sky-500/10 text-sky-600';
+      case 'completed':
+        return 'bg-blue-500/10 text-blue-600';
+      case 'transferred':
+      case 'watch':
+        return 'bg-amber-500/10 text-amber-600';
+      case 'inactive':
+      case 'at risk':
+        return 'bg-rose-500/10 text-rose-600';
+      default:
+        return 'bg-muted text-muted-foreground';
+    }
+  }
+
   getFullName(person: Employee | Trainee | null): string {
     if (!person) return '';
     return `${person.firstName || ''} ${person.lastName || ''}`.trim();
@@ -246,5 +458,36 @@ export class WeeklyEvaluationComponent {
   getAverageRating(): number {
     const { performance, productivity, teamwork, initiative } = this.evaluationForm.value;
     return (performance! + productivity! + teamwork! + initiative!) / 4;
+  }
+
+  trackDepartment(_index: number, group: DepartmentGroupRow): string {
+    return group.department;
+  }
+
+  trackRow(_index: number, row: PersonRow): string {
+    return row.id;
+  }
+
+  toggleDepartment(type: 'employee' | 'trainee', department: string): void {
+    const key = `${type}-${department}`;
+    const expanded = this.expandedDepartments();
+    const newExpanded = new Set(expanded);
+    
+    if (newExpanded.has(key)) {
+      newExpanded.delete(key);
+    } else {
+      newExpanded.add(key);
+    }
+    
+    this.expandedDepartments.set(newExpanded);
+  }
+
+  isDepartmentExpanded(type: 'employee' | 'trainee', department: string): boolean {
+    const key = `${type}-${department}`;
+    return this.expandedDepartments().has(key);
+  }
+
+  setHoveredRow(rowId: string | null): void {
+    this.hoveredRow.set(rowId);
   }
 }

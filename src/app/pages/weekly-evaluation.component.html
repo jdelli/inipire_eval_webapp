@@ -16,10 +16,10 @@
     </button>
   </header>
 
-  <div *ngIf="loading()" class="flex items-center justify-center rounded-2xl border bg-card/80 p-12">
+  <div *ngIf="loading()" class="flex items-center justify-center rounded-2xl border bg-card/80 p-12 animate-fade-in">
     <div class="flex flex-col items-center gap-3">
       <div class="size-8 animate-spin rounded-full border-4 border-muted border-t-primary"></div>
-      <p class="text-sm text-muted-foreground">Loading personnel...</p>
+      <p class="text-sm text-muted-foreground animate-pulse">Loading personnel...</p>
     </div>
   </div>
 
@@ -33,134 +33,237 @@
     </div>
 
     <div class="grid gap-6 xl:grid-cols-2">
-      <section class="flex flex-col rounded-2xl border bg-card/80 shadow-sm">
+      <section class="flex flex-col rounded-2xl border bg-card/80 shadow-sm transition-all duration-300 hover:shadow-md">
         <div class="border-b px-6 py-4">
           <h3 class="text-lg font-semibold text-foreground">Employees</h3>
           <p class="text-sm text-muted-foreground">Evaluate weekly performance of employees.</p>
         </div>
         <div class="p-6">
-          <div class="relative">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground">
+          <div class="relative group">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary">
               <path d="m21 21-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
             <input
               type="text"
               placeholder="Filter employees..."
-              class="w-full rounded-lg border bg-transparent py-2 pl-10 pr-4 text-sm placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20"
-              (input)="employeeFilter.set($any($event.target).value)"
+              class="w-full rounded-lg border bg-transparent py-2 pl-10 pr-4 text-sm placeholder:text-muted-foreground transition-all focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              (input)="onEmployeeFilterChange($any($event.target).value)"
             />
           </div>
+          <p class="mt-3 text-xs text-muted-foreground">
+            {{ filteredEmployeeRows().length }} matching employee{{ filteredEmployeeRows().length === 1 ? '' : 's' }} | {{ itemsPerPage }} per page
+          </p>
         </div>
-        <div class="flex-1 overflow-y-auto px-6 pb-6">
-          <div *ngIf="filteredEmployeeGroups().length; else noEmployees" class="space-y-5">
-            <div *ngFor="let group of filteredEmployeeGroups()" class="rounded-xl border bg-background/70">
-              <header class="flex items-center justify-between border-b px-4 py-3">
-                <h4 class="text-sm font-semibold text-foreground">{{ group.department || 'Unassigned' }}</h4>
-                <span class="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{{ group.members.length }} team{{ group.members.length === 1 ? '' : ' members' }}</span>
-              </header>
-              <ul class="divide-y divide-border">
-                <li *ngFor="let row of group.members" class="flex items-center justify-between p-4 hover:bg-muted/40">
-                  <div class="flex items-center gap-3">
-                    <img [src]="row.avatar || 'https://ui-avatars.com/api/?name=' + row.name" [alt]="row.name" class="size-9 rounded-full object-cover" />
-                    <div>
-                      <p class="font-medium text-foreground">{{ row.name }}</p>
-                      <p class="text-sm text-muted-foreground">{{ row.position }}</p>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-4">
-                    <span class="rounded-full px-2 py-0.5 text-xs"
-                      [ngClass]="{
-                        'bg-emerald-500/10 text-emerald-600': row.status === 'Active' || row.status === 'In Progress',
-                        'bg-amber-500/10 text-amber-600': row.status === 'Transferred' || row.status === 'Watch',
-                        'bg-rose-500/10 text-rose-600': row.status === 'Inactive' || row.status === 'At risk'
-                      }"
-                    >
-                      {{ row.status || '—' }}
-                    </span>
-                    <button
-                      type="button"
-                      class="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                      (click)="openEvaluationModal(row.raw, 'employee')"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="size-5">
-                        <path d="M12 20h9" stroke-linecap="round" stroke-linejoin="round" />
-                        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" stroke-linecap="round" stroke-linejoin="round" />
-                      </svg>
-                    </button>
-                  </div>
-                </li>
-              </ul>
+        <div class="flex-1 px-6 pb-6">
+          <ng-container *ngIf="filteredEmployeeRows().length; else noEmployees">
+            <div class="rounded-xl border bg-background/70 shadow-inner">
+              <div class="max-h-[520px] overflow-auto">
+                <table class="min-w-full divide-y divide-border text-sm">
+                  <thead class="bg-muted/20 text-muted-foreground">
+                    <tr>
+                      <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">Member</th>
+                      <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">Department</th>
+                      <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">Status</th>
+                      <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-border">
+                    <ng-container *ngFor="let group of paginatedEmployeeGroups(); trackBy: trackDepartment">
+                      <tr class="dept-header bg-muted/40 text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground animate-fade-in"
+                          (click)="toggleDepartment('employee', group.department)"
+                          [attr.aria-expanded]="isDepartmentExpanded('employee', group.department)"
+                          role="button"
+                          tabindex="0">
+                        <td colspan="4" class="px-4 py-2">
+                          <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                              <svg 
+                                xmlns="http://www.w3.org/2000/svg" 
+                                viewBox="0 0 20 20" 
+                                fill="currentColor" 
+                                class="size-4 chevron-icon"
+                                [ngClass]="{ 'rotate-180': isDepartmentExpanded('employee', group.department) }">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                              </svg>
+                              <span>{{ group.department || 'Unassigned' }}</span>
+                            </div>
+                            <span class="rounded-full bg-primary/10 px-2 py-0.5 text-[0.65rem] font-semibold text-primary status-pulse">{{ group.members.length }} member{{ group.members.length === 1 ? '' : 's' }}</span>
+                          </div>
+                        </td>
+                      </tr>
+                      <ng-container *ngIf="isDepartmentExpanded('employee', group.department)">
+                        <tr *ngFor="let row of group.members; trackBy: trackRow" class="transition hover:bg-muted/20 row-highlight animate-slide-in"
+                            (mouseenter)="setHoveredRow(row.id)"
+                            (mouseleave)="setHoveredRow(null)">
+                        <td class="px-4 py-3">
+                          <div class="flex items-center gap-3">
+                            <img [src]="row.avatar || 'https://ui-avatars.com/api/?name=' + row.name" [alt]="row.name" class="size-9 rounded-full object-cover" />
+                            <div>
+                              <p class="font-medium text-foreground">{{ row.name }}</p>
+                              <p class="text-xs text-muted-foreground">{{ row.position }}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-muted-foreground">{{ row.department }}</td>
+                        <td class="px-4 py-3">
+                          <span class="rounded-full px-2 py-0.5 text-xs" [ngClass]="getStatusBadgeClass(row.status)">
+                            {{ row.status || '--' }}
+                          </span>
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                          <button
+                            type="button"
+                            class="evaluate-btn inline-flex items-center justify-center rounded-lg border border-transparent bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/20"
+                            (click)="openEvaluationModal(row.raw, 'employee')"
+                            [ngClass]="{ 'animate-scale-in': hoveredRow() === row.id }"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-3 mr-1">
+                              <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+                            </svg>
+                            Evaluate
+                          </button>
+                        </td>
+                      </tr>
+                      </ng-container>
+                    </ng-container>
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          </ng-container>
           <ng-template #noEmployees>
-            <div class="py-12 text-center text-sm text-muted-foreground">No employees found.</div>
+            <div class="flex flex-col items-center justify-center gap-3 py-12 text-center">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="size-10 text-muted-foreground">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.182 16.318A4.486 4.486 0 0 0 12.016 15a4.486 4.486 0 0 0-3.198 1.318M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM9 10.5a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm6 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
+              </svg>
+              <p class="text-sm text-muted-foreground">No employees found.</p>
+            </div>
           </ng-template>
+        </div>
+        <div *ngIf="filteredEmployeeRows().length > itemsPerPage" class="border-t px-6 py-4">
+          <app-paginator
+            [totalItems]="filteredEmployeeRows().length"
+            [itemsPerPage]="itemsPerPage"
+            [currentPage]="employeeCurrentPage()"
+            (pageChange)="onEmployeePageChange($event)"
+          ></app-paginator>
         </div>
       </section>
 
-      <section class="flex flex-col rounded-2xl border bg-card/80 shadow-sm">
+      <section class="flex flex-col rounded-2xl border bg-card/80 shadow-sm transition-all duration-300 hover:shadow-md">
         <div class="border-b px-6 py-4">
           <h3 class="text-lg font-semibold text-foreground">Trainees</h3>
           <p class="text-sm text-muted-foreground">Evaluate weekly performance of trainees.</p>
         </div>
         <div class="p-6">
-          <div class="relative">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground">
+          <div class="relative group">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary">
               <path d="m21 21-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
             <input
               type="text"
               placeholder="Filter trainees..."
-              class="w-full rounded-lg border bg-transparent py-2 pl-10 pr-4 text-sm placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20"
-              (input)="traineeFilter.set($any($event.target).value)"
+              class="w-full rounded-lg border bg-transparent py-2 pl-10 pr-4 text-sm placeholder:text-muted-foreground transition-all focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              (input)="onTraineeFilterChange($any($event.target).value)"
             />
           </div>
+          <p class="mt-3 text-xs text-muted-foreground">
+            {{ filteredTraineeRows().length }} matching trainee{{ filteredTraineeRows().length === 1 ? '' : 's' }} | {{ itemsPerPage }} per page
+          </p>
         </div>
-        <div class="flex-1 overflow-y-auto px-6 pb-6">
-          <div *ngIf="filteredTraineeGroups().length; else noTrainees" class="space-y-5">
-            <div *ngFor="let group of filteredTraineeGroups()" class="rounded-xl border bg-background/70">
-              <header class="flex items-center justify-between border-b px-4 py-3">
-                <h4 class="text-sm font-semibold text-foreground">{{ group.department || 'Unassigned' }}</h4>
-                <span class="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{{ group.members.length }} trainee{{ group.members.length === 1 ? '' : 's' }}</span>
-              </header>
-              <ul class="divide-y divide-border">
-                <li *ngFor="let row of group.members" class="flex items-center justify-between p-4 hover:bg-muted/40">
-                  <div class="flex items-center gap-3">
-                    <img [src]="row.avatar || 'https://ui-avatars.com/api/?name=' + row.name" [alt]="row.name" class="size-9 rounded-full object-cover" />
-                    <div>
-                      <p class="font-medium text-foreground">{{ row.name }}</p>
-                      <p class="text-sm text-muted-foreground">{{ row.position }}</p>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-4">
-                    <span class="rounded-full px-2 py-0.5 text-xs"
-                      [ngClass]="{
-                        'bg-emerald-500/10 text-emerald-600': row.status === 'Active' || row.status === 'In Progress',
-                        'bg-amber-500/10 text-amber-600': row.status === 'Transferred' || row.status === 'Watch',
-                        'bg-rose-500/10 text-rose-600': row.status === 'Inactive' || row.status === 'At risk',
-                        'bg-blue-500/10 text-blue-600': row.status === 'Completed'
-                      }"
-                    >
-                      {{ row.status || '—' }}
-                    </span>
-                    <button
-                      type="button"
-                      class="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                      (click)="openEvaluationModal(row.raw, 'trainee')"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="size-5">
-                        <path d="M12 20h9" stroke-linecap="round" stroke-linejoin="round" />
-                        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" stroke-linecap="round" stroke-linejoin="round" />
-                      </svg>
-                    </button>
-                  </div>
-                </li>
-              </ul>
+        <div class="flex-1 px-6 pb-6">
+          <ng-container *ngIf="filteredTraineeRows().length; else noTrainees">
+            <div class="rounded-xl border bg-background/70 shadow-inner">
+              <div class="max-h-[520px] overflow-auto">
+                <table class="min-w-full divide-y divide-border text-sm">
+                  <thead class="bg-muted/20 text-muted-foreground">
+                    <tr>
+                      <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">Trainee</th>
+                      <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">Department</th>
+                      <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">Status</th>
+                      <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-border">
+                    <ng-container *ngFor="let group of paginatedTraineeGroups(); trackBy: trackDepartment">
+                      <tr class="dept-header bg-muted/40 text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground animate-fade-in"
+                          (click)="toggleDepartment('trainee', group.department)"
+                          [attr.aria-expanded]="isDepartmentExpanded('trainee', group.department)"
+                          role="button"
+                          tabindex="0">
+                        <td colspan="4" class="px-4 py-2">
+                          <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                              <svg 
+                                xmlns="http://www.w3.org/2000/svg" 
+                                viewBox="0 0 20 20" 
+                                fill="currentColor" 
+                                class="size-4 chevron-icon"
+                                [ngClass]="{ 'rotate-180': isDepartmentExpanded('trainee', group.department) }">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                              </svg>
+                              <span>{{ group.department || 'Unassigned' }}</span>
+                            </div>
+                            <span class="rounded-full bg-primary/10 px-2 py-0.5 text-[0.65rem] font-semibold text-primary status-pulse">{{ group.members.length }} trainee{{ group.members.length === 1 ? '' : 's' }}</span>
+                          </div>
+                        </td>
+                      </tr>
+                      <ng-container *ngIf="isDepartmentExpanded('trainee', group.department)">
+                        <tr *ngFor="let row of group.members; trackBy: trackRow" class="transition hover:bg-muted/20 row-highlight animate-slide-in"
+                            (mouseenter)="setHoveredRow(row.id)"
+                            (mouseleave)="setHoveredRow(null)">
+                        <td class="px-4 py-3">
+                          <div class="flex items-center gap-3">
+                            <img [src]="row.avatar || 'https://ui-avatars.com/api/?name=' + row.name" [alt]="row.name" class="size-9 rounded-full object-cover" />
+                            <div>
+                              <p class="font-medium text-foreground">{{ row.name }}</p>
+                              <p class="text-xs text-muted-foreground">{{ row.position }}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-muted-foreground">{{ row.department }}</td>
+                        <td class="px-4 py-3">
+                          <span class="rounded-full px-2 py-0.5 text-xs" [ngClass]="getStatusBadgeClass(row.status)">
+                            {{ row.status || '--' }}
+                          </span>
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                          <button
+                            type="button"
+                            class="evaluate-btn inline-flex items-center justify-center rounded-lg border border-transparent bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/20"
+                            (click)="openEvaluationModal(row.raw, 'trainee')"
+                            [ngClass]="{ 'animate-scale-in': hoveredRow() === row.id }"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-3 mr-1">
+                              <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+                            </svg>
+                            Evaluate
+                          </button>
+                        </td>
+                      </tr>
+                      </ng-container>
+                    </ng-container>
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          </ng-container>
           <ng-template #noTrainees>
-            <div class="py-12 text-center text-sm text-muted-foreground">No trainees found.</div>
+            <div class="flex flex-col items-center justify-center gap-3 py-12 text-center">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="size-10 text-muted-foreground">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.182 16.318A4.486 4.486 0 0 0 12.016 15a4.486 4.486 0 0 0-3.198 1.318M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM9 10.5a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm6 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
+              </svg>
+              <p class="text-sm text-muted-foreground">No trainees found.</p>
+            </div>
           </ng-template>
+        </div>
+        <div *ngIf="filteredTraineeRows().length > itemsPerPage" class="border-t px-6 py-4">
+          <app-paginator
+            [totalItems]="filteredTraineeRows().length"
+            [itemsPerPage]="itemsPerPage"
+            [currentPage]="traineeCurrentPage()"
+            (pageChange)="onTraineePageChange($event)"
+          ></app-paginator>
         </div>
       </section>
     </div>
@@ -170,11 +273,12 @@
 <!-- Evaluation Modal -->
 <div
   *ngIf="showModal()"
-  class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+  class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in"
   (click)="closeModal()"
+  style="backdrop-filter: blur(4px);"
 >
   <div
-    class="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border bg-background shadow-xl"
+    class="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border bg-background shadow-xl animate-scale-in"
     (click)="$event.stopPropagation()"
   >
     <div class="sticky top-0 z-10 flex items-center justify-between border-b bg-background/95 px-6 py-4 backdrop-blur">
@@ -183,7 +287,7 @@
           Weekly Evaluation
         </h3>
         <p class="text-sm text-muted-foreground">
-          {{ getFullName(selectedPerson()) }} · {{ personType() === 'employee' ? 'Employee' : 'Trainee' }}
+          {{ getFullName(selectedPerson()) }} | {{ personType() === 'employee' ? 'Employee' : 'Trainee' }}
         </p>
       </div>
       <button
