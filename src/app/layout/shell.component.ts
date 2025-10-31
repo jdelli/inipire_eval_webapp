@@ -9,7 +9,8 @@ import {
 } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs';
-import { employeeSnapshot } from '../data/mock-data';
+import { RoleService } from '../state/role.service';
+import { AuthService } from '../services/auth.service';
 
 interface NavItem {
   label: string;
@@ -28,8 +29,11 @@ interface NavItem {
 export class ShellComponent {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly roleService = inject(RoleService);
+  private readonly authService = inject(AuthService);
 
-  readonly snapshot = employeeSnapshot;
+  readonly profile = this.roleService.profile;
+  readonly loggingOut = signal(false);
   // Collapsible sidebar state (desktop only)
   readonly sidebarCollapsed = signal<boolean>(false);
   readonly navItems: NavItem[] = [
@@ -117,6 +121,25 @@ export class ShellComponent {
       return next;
     });
     console.log('New state:', this.sidebarCollapsed());
+  }
+
+  logout(): void {
+    if (this.loggingOut()) {
+      return;
+    }
+    this.loggingOut.set(true);
+    this.authService.logout().subscribe({
+      next: () => {
+        this.loggingOut.set(false);
+        this.router.navigate(['/login']);
+      },
+      error: (err) => {
+        console.error('[ShellComponent] logout error', err);
+        this.loggingOut.set(false);
+        // Navigate to login anyway
+        this.router.navigate(['/login']);
+      },
+    });
   }
 
   trackByRoute(_: number, item: NavItem): string {

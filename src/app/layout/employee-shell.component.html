@@ -1,16 +1,33 @@
 <div class="min-h-screen bg-muted/40 text-sm text-foreground antialiased">
   <header class="sticky top-0 z-30 border-b bg-background/90 backdrop-blur">
     <div class="flex w-full items-center justify-between gap-4 px-4 py-3 md:px-8 xl:px-12">
-      <div class="flex items-center gap-3">
-        <img [src]="snapshot.avatar" alt="Me" class="size-9 rounded-lg object-cover" />
+      <div class="flex items-center gap-3" *ngIf="profile()">
+        <div class="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <span class="text-sm font-semibold">{{ profile()!.fullName.charAt(0).toUpperCase() }}</span>
+        </div>
         <div>
           <p class="text-xs text-muted-foreground">Employee Workspace</p>
-          <h1 class="text-base font-semibold">{{ snapshot.name }}</h1>
+          <h1 class="text-base font-semibold">{{ profile()!.fullName }}</h1>
         </div>
       </div>
-      <div class="text-right text-xs text-muted-foreground">
-        <p class="font-semibold text-foreground">Daily reporting</p>
-        <p class="mt-0.5">Log your day and raise incidents fast.</p>
+      <div class="flex items-center gap-4">
+        <div class="text-right text-xs text-muted-foreground">
+          <p class="font-semibold text-foreground">Daily reporting</p>
+          <p class="mt-0.5">Log your day and raise incidents fast.</p>
+        </div>
+        <button
+          type="button"
+          (click)="logout()"
+          [disabled]="loggingOut()"
+          [title]="loggingOut() ? 'Signing out...' : 'Sign out'"
+          class="flex size-9 items-center justify-center rounded-lg border border-input bg-background text-muted-foreground transition hover:bg-destructive hover:text-destructive-foreground disabled:opacity-50"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="size-4">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke-linecap="round" stroke-linejoin="round"/>
+            <polyline points="16 17 21 12 16 7" stroke-linecap="round" stroke-linejoin="round"/>
+            <line x1="21" y1="12" x2="9" y2="12" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
       </div>
     </div>
   </header>
@@ -230,11 +247,11 @@
             <div>
               <h3 class="text-base font-semibold text-foreground">Incident report</h3>
               <p class="mt-1 text-xs text-muted-foreground">
-                Logged under trainingRecords/{{ traineeRecordId }}/incedentReports.
+                Logged under trainingRecords/{{ traineeRecordId() }}/incedentReports.
               </p>
             </div>
             <span
-              *ngIf="traineeRecordId; else missingTrainee"
+              *ngIf="traineeRecordId(); else missingTrainee"
               class="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-[11px] font-semibold text-primary"
             >
               ID ready
@@ -349,7 +366,7 @@
             <button
               type="submit"
               class="w-full rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-70"
-              [disabled]="incidentSaving() || !traineeRecordId"
+              [disabled]="incidentSaving() || !traineeRecordId()"
             >
               <ng-container *ngIf="incidentSaving(); else incidentLabel">Submitting...</ng-container>
               <ng-template #incidentLabel>Submit incident</ng-template>

@@ -9,7 +9,9 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { employeeSnapshot } from '../data/mock-data';
+import { Router } from '@angular/router';
+import { RoleService } from '../state/role.service';
+import { AuthService } from '../services/auth.service';
 import {
   DailyReportEntry,
   IncidentReportPayload,
@@ -32,10 +34,14 @@ export class EmployeeShellComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
   private readonly reportingService = inject(ReportingService);
+  private readonly roleService = inject(RoleService);
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
-  readonly snapshot = employeeSnapshot;
-  readonly employeeId: string = this.snapshot.employeeId ?? '';
-  readonly traineeRecordId: string = this.snapshot.traineeRecordId ?? '';
+  readonly profile = this.roleService.profile;
+  readonly loggingOut = signal(false);
+  readonly employeeId = computed(() => this.profile()?.uid ?? '');
+  readonly traineeRecordId = computed(() => this.profile()?.uid ?? '');
   readonly todayKey = toDateKey(new Date());
   readonly todayLabel = formatDateLabel(this.todayKey);
   readonly timeSlots: string[] = [
@@ -88,11 +94,11 @@ export class EmployeeShellComponent implements OnInit {
     summary: ['', Validators.required],
     impact: ['', Validators.required],
     actions: ['', Validators.required],
-    reportedBy: [this.snapshot.name ?? ''],
+    reportedBy: [this.profile()?.fullName ?? ''],
   });
 
   ngOnInit(): void {
-    if (this.employeeId) {
+    if (this.employeeId()) {
       this.loadDailyReport();
       this.refreshMissingDailyReportAlerts();
     } else {
@@ -101,7 +107,7 @@ export class EmployeeShellComponent implements OnInit {
   }
 
   loadDailyReport(): void {
-    if (!this.employeeId) {
+    if (!this.employeeId()) {
       this.dailyReportError.set('No employee ID configured.');
       return;
     }
@@ -110,7 +116,7 @@ export class EmployeeShellComponent implements OnInit {
     this.dailyReportError.set(null);
 
     this.reportingService
-      .getDailyReport(this.employeeId, this.todayKey)
+      .getDailyReport(this.employeeId(), this.todayKey)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (record) => {
@@ -140,13 +146,13 @@ export class EmployeeShellComponent implements OnInit {
   }
 
   refreshMissingDailyReportAlerts(): void {
-    if (!this.employeeId) {
+    if (!this.employeeId()) {
       this.missingReportAlerts.set([]);
       return;
     }
 
     this.reportingService
-      .getMissingDailyReportDates(this.employeeId, 5)
+      .getMissingDailyReportDates(this.employeeId(), 5)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (dates) => {
@@ -160,7 +166,7 @@ export class EmployeeShellComponent implements OnInit {
   }
 
   saveDailyReport(): void {
-    if (!this.employeeId) {
+    if (!this.employeeId()) {
       this.dailyReportError.set('No employee ID configured.');
       return;
     }
@@ -179,13 +185,13 @@ export class EmployeeShellComponent implements OnInit {
     const payload = {
       date: this.todayKey,
       entries,
-      submittedBy: this.snapshot.name ?? null,
+      submittedBy: this.profile()?.fullName ?? null,
       notes: meta.notes?.trim() ? meta.notes.trim() : null,
       complete: !!meta.complete,
     };
 
     this.reportingService
-      .saveDailyReport(this.employeeId, payload)
+      .saveDailyReport(this.employeeId(), payload)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
@@ -247,7 +253,7 @@ export class EmployeeShellComponent implements OnInit {
   }
 
   submitIncident(): void {
-    if (!this.traineeRecordId) {
+    if (!this.traineeRecordId()) {
       this.incidentError.set('No trainee record ID configured.');
       return;
     }
@@ -284,7 +290,7 @@ export class EmployeeShellComponent implements OnInit {
     this.incidentNotice.set(null);
 
     this.reportingService
-      .createIncidentReport(this.traineeRecordId, {
+      .createIncidentReport(this.traineeRecordId(), {
         date: date || this.todayKey,
         title: title!.trim(),
         severity: severity as IncidentReportPayload['severity'],
@@ -292,7 +298,7 @@ export class EmployeeShellComponent implements OnInit {
         summary: summary!.trim(),
         impact: impact!.trim(),
         actions: parsedActions,
-        reportedBy: reportedBy?.trim() || this.snapshot.name || null,
+        reportedBy: reportedBy?.trim() || this.profile()?.fullName || null,
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -309,6 +315,25 @@ export class EmployeeShellComponent implements OnInit {
       });
   }
 
+  logout(): void {
+    if (this.loggingOut()) {
+      return;
+    }
+    this.loggingOut.set(true);
+    this.authService.logout().subscribe({
+      next: () => {
+        this.loggingOut.set(false);
+        this.router.navigate(['/login']);
+      },
+      error: (err) => {
+        console.error('[EmployeeShellComponent] logout error', err);
+        this.loggingOut.set(false);
+        // Navigate to login anyway
+        this.router.navigate(['/login']);
+      },
+    });
+  }
+
   resetIncidentForm(): void {
     this.incidentForm.reset({
       date: this.todayKey,
@@ -318,7 +343,7 @@ export class EmployeeShellComponent implements OnInit {
       summary: '',
       impact: '',
       actions: '',
-      reportedBy: this.snapshot.name ?? '',
+      reportedBy: this.profile()?.fullName ?? '',
     });
   }
 }
