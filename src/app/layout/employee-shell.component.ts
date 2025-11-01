@@ -7,43 +7,71 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import {
+  NavigationEnd,
+  Router,
+  RouterLink,
+  RouterLinkActive,
+  RouterOutlet,
+} from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { filter } from 'rxjs';
 import { RoleService } from '../state/role.service';
 import { AuthService } from '../services/auth.service';
 import {
   DailyReportEntry,
-  IncidentReportPayload,
   ReportingService,
 } from '../services/reporting.service';
-import { DepartmentFeedComponent } from '../pages/department-feed.component';
+import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatTabsModule } from '@angular/material/tabs';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatCardModule } from '@angular/material/card';
+import { MatDividerModule } from '@angular/material/divider';
 
-interface DailyEntry {
-  hour: string;
-  activity: string;
+interface EmployeeNavItem {
+  label: string;
+  route: string;
+  icon: 'home' | 'schedule' | 'report';
+  description: string;
 }
 
 @Component({
   selector: 'app-employee-shell',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [
+    CommonModule,
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    MatToolbarModule,
+    MatIconModule,
+    MatButtonModule,
+    MatMenuModule,
+    MatChipsModule,
+    MatTabsModule,
+    MatTooltipModule,
+    MatProgressBarModule,
+    MatCardModule,
+    MatDividerModule,
+  ],
   templateUrl: './employee-shell.component.html',
   styles: ``,
 })
 export class EmployeeShellComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
-  private readonly fb = inject(FormBuilder);
+  private readonly router = inject(Router);
   private readonly reportingService = inject(ReportingService);
   private readonly roleService = inject(RoleService);
   private readonly authService = inject(AuthService);
-  private readonly router = inject(Router);
 
   readonly profile = this.roleService.profile;
   readonly loggingOut = signal(false);
   readonly employeeId = computed(() => this.profile()?.uid ?? '');
-  readonly traineeRecordId = computed(() => this.profile()?.uid ?? '');
   readonly todayKey = toDateKey(new Date());
   readonly todayLabel = formatDateLabel(this.todayKey);
   readonly timeSlots: string[] = [
@@ -59,17 +87,43 @@ export class EmployeeShellComponent implements OnInit {
     '17:00',
     '18:00',
   ];
-  readonly entries = signal<DailyEntry[]>([]);
-  readonly editingHour = signal<string | null>(null);
+  readonly navItems: EmployeeNavItem[] = [
+    {
+      label: 'Home',
+      route: '/home',
+      icon: 'home',
+      description: 'Team updates, quick wins, and leadership broadcasts.',
+    },
+    {
+      label: 'Daily report',
+      route: '/daily-report',
+      icon: 'schedule',
+      description: 'Capture hourly progress and signal blockers fast.',
+    },
+    {
+      label: 'Incident report',
+      route: '/incident-report',
+      icon: 'report',
+      description: 'File structured incidents with impact and follow-up actions.',
+    },
+  ];
+
+  private readonly iconMap: Record<EmployeeNavItem['icon'], string> = {
+    home: 'dynamic_feed',
+    schedule: 'schedule',
+    report: 'report_problem',
+  };
+
+  readonly activeNav = signal<EmployeeNavItem>(this.navItems[0]);
   readonly dailyReportLoading = signal(false);
-  readonly dailyReportSaving = signal(false);
-  readonly dailyReportError = signal<string | null>(null);
-  readonly dailyReportNotice = signal<string | null>(null);
+  readonly dailyError = signal<string | null>(null);
+  readonly entries = signal<DailyReportEntry[]>([]);
   readonly lastDailyReportSavedAt = signal<Date | null>(null);
   readonly missingReportAlerts = signal<string[]>([]);
-  readonly incidentSaving = signal(false);
-  readonly incidentError = signal<string | null>(null);
-  readonly incidentNotice = signal<string | null>(null);
+
+  readonly avatarInitial = computed(
+    () => this.profile()?.fullName?.charAt(0)?.toUpperCase() ?? '?'
+  );
   readonly hoursLogged = computed(() => this.entries().length);
   readonly completionPercent = computed(() => {
     const total = this.timeSlots.length;
@@ -80,247 +134,44 @@ export class EmployeeShellComponent implements OnInit {
   });
   readonly missingCount = computed(() => this.missingReportAlerts().length);
 
-  // Tabs: 'daily' or 'incident'
-  readonly activeTab = signal<'daily' | 'incident'>('daily');
-  setTab(tab: 'daily' | 'incident') {
-    this.activeTab.set(tab);
-  }
+  readonly tagline = computed(() => {
+    switch (this.activeNav().route) {
+      case '/daily-report':
+        return 'Record each hour, celebrate momentum, and surface blockers in real time.';
+      case '/incident-report':
+        return 'Escalate issues with clear impact and owners so your lead can respond quickly.';
+      case '/home':
+      default:
+        return 'Stay in sync with department announcements and next actions from leadership.';
+    }
+  });
 
-  readonly entryForm = this.fb.nonNullable.group({
-    hour: this.timeSlots[0],
-    activity: '',
-  });
-  readonly dailyMetaForm = this.fb.nonNullable.group({
-    notes: '',
-    complete: true,
-  });
-  readonly incidentForm = this.fb.group({
-    date: [this.todayKey, Validators.required],
-    title: ['', Validators.required],
-    severity: ['medium', Validators.required],
-    status: ['Open', Validators.required],
-    summary: ['', Validators.required],
-    impact: ['', Validators.required],
-    actions: ['', Validators.required],
-    reportedBy: [this.profile()?.fullName ?? ''],
-  });
+  constructor() {
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((event) => this.setActiveNav(event.urlAfterRedirects));
+
+    this.setActiveNav(this.router.url);
+  }
 
   ngOnInit(): void {
     if (this.employeeId()) {
-      this.loadDailyReport();
+      this.loadDailySummary();
       this.refreshMissingDailyReportAlerts();
     } else {
-      this.dailyReportError.set('No employee ID configured.');
+      this.dailyError.set('No employee profile detected.');
     }
   }
 
-  loadDailyReport(): void {
-    if (!this.employeeId()) {
-      this.dailyReportError.set('No employee ID configured.');
-      return;
-    }
-
-    this.dailyReportLoading.set(true);
-    this.dailyReportError.set(null);
-
-    this.reportingService
-      .getDailyReport(this.employeeId(), this.todayKey)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (record) => {
-          if (record) {
-            const entries = sortEntries(record.entries ?? []);
-            this.entries.set(entries);
-            this.dailyMetaForm.setValue({
-              notes: record.notes ?? '',
-              complete: record.complete ?? false,
-            });
-            this.lastDailyReportSavedAt.set(
-              record.updatedAt ?? record.createdAt ?? null
-            );
-          } else {
-            this.entries.set([]);
-            this.dailyMetaForm.setValue({ notes: '', complete: true });
-            this.lastDailyReportSavedAt.set(null);
-          }
-          this.dailyReportLoading.set(false);
-        },
-        error: (error) => {
-          console.error('Error loading daily report', error);
-          this.dailyReportLoading.set(false);
-          this.dailyReportError.set("Couldn't load today's daily report.");
-        },
-      });
+  navIcon(icon: EmployeeNavItem['icon']): string {
+    return this.iconMap[icon] ?? 'dashboard';
   }
 
-  refreshMissingDailyReportAlerts(): void {
-    if (!this.employeeId()) {
-      this.missingReportAlerts.set([]);
-      return;
-    }
-
-    this.reportingService
-      .getMissingDailyReportDates(this.employeeId(), 5)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (dates) => {
-          const friendly = dates.map(formatDateLabel);
-          this.missingReportAlerts.set(friendly);
-        },
-        error: (error) => {
-          console.error('Error loading missing daily reports', error);
-        },
-      });
-  }
-
-  saveDailyReport(): void {
-    if (!this.employeeId()) {
-      this.dailyReportError.set('No employee ID configured.');
-      return;
-    }
-
-    const entries = sortEntries(this.entries());
-    if (!entries.length) {
-      this.dailyReportError.set('Add at least one hourly entry before saving.');
-      return;
-    }
-
-    const meta = this.dailyMetaForm.getRawValue();
-    this.dailyReportSaving.set(true);
-    this.dailyReportError.set(null);
-    this.dailyReportNotice.set(null);
-
-    const payload = {
-      date: this.todayKey,
-      entries,
-      submittedBy: this.profile()?.fullName ?? null,
-      notes: meta.notes?.trim() ? meta.notes.trim() : null,
-      complete: !!meta.complete,
-    };
-
-    this.reportingService
-      .saveDailyReport(this.employeeId(), payload)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          this.dailyReportSaving.set(false);
-          this.dailyReportNotice.set('Daily report saved.');
-          this.lastDailyReportSavedAt.set(new Date());
-          this.refreshMissingDailyReportAlerts();
-        },
-        error: (error) => {
-          console.error('Error saving daily report', error);
-          this.dailyReportSaving.set(false);
-          this.dailyReportError.set('Failed to save daily report. Try again.');
-        },
-      });
-  }
-
-  submitEntry(): void {
-    const { hour, activity } = this.entryForm.getRawValue();
-    const trimmed = activity.trim();
-
-    if (!trimmed) {
-      return;
-    }
-
-    const originalHour = this.editingHour();
-    const nextEntry: DailyEntry = { hour, activity: trimmed };
-
-    this.entries.update((items) => {
-      const filtered = items.filter(
-        (item) => item.hour !== nextEntry.hour && item.hour !== originalHour
-      );
-      return [...filtered, nextEntry].sort((a, b) => a.hour.localeCompare(b.hour));
-    });
-
-    this.resetForm();
-  }
-
-  clearEntries(): void {
-    this.entries.set([]);
-    this.resetForm();
-    this.dailyMetaForm.setValue({ notes: '', complete: true });
-  }
-
-  editEntry(entry: DailyEntry): void {
-    this.editingHour.set(entry.hour);
-    this.entryForm.setValue({ hour: entry.hour, activity: entry.activity });
-  }
-
-  removeEntry(hour: string): void {
-    this.entries.update((items) => items.filter((item) => item.hour !== hour));
-    if (this.editingHour() === hour) {
-      this.resetForm();
-    }
-  }
-
-  resetForm(): void {
-    this.editingHour.set(null);
-    this.entryForm.setValue({ hour: this.timeSlots[0], activity: '' });
-  }
-
-  submitIncident(): void {
-    if (!this.traineeRecordId()) {
-      this.incidentError.set('No trainee record ID configured.');
-      return;
-    }
-
-    if (this.incidentForm.invalid) {
-      this.incidentForm.markAllAsTouched();
-      this.incidentError.set('Complete all required fields before submitting.');
-      return;
-    }
-
-    const {
-      date,
-      title,
-      severity,
-      status,
-      summary,
-      impact,
-      actions,
-      reportedBy,
-    } = this.incidentForm.getRawValue();
-
-    const parsedActions = (actions ?? '')
-      .split(/\r?\n/)
-      .map((item) => item.trim())
-      .filter(Boolean);
-
-    if (!parsedActions.length) {
-      this.incidentError.set('List at least one follow-up action.');
-      return;
-    }
-
-    this.incidentSaving.set(true);
-    this.incidentError.set(null);
-    this.incidentNotice.set(null);
-
-    this.reportingService
-      .createIncidentReport(this.traineeRecordId(), {
-        date: date || this.todayKey,
-        title: title!.trim(),
-        severity: severity as IncidentReportPayload['severity'],
-        status: status as IncidentReportPayload['status'],
-        summary: summary!.trim(),
-        impact: impact!.trim(),
-        actions: parsedActions,
-        reportedBy: reportedBy?.trim() || this.profile()?.fullName || null,
-      })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (id) => {
-          this.incidentSaving.set(false);
-          this.incidentNotice.set(`Incident report created (${id}).`);
-          this.resetIncidentForm();
-        },
-        error: (error) => {
-          console.error('Error creating incident report', error);
-          this.incidentSaving.set(false);
-          this.incidentError.set('Failed to submit incident report.');
-        },
-      });
+  trackByRoute(_: number, item: EmployeeNavItem): string {
+    return item.route;
   }
 
   logout(): void {
@@ -336,23 +187,65 @@ export class EmployeeShellComponent implements OnInit {
       error: (err) => {
         console.error('[EmployeeShellComponent] logout error', err);
         this.loggingOut.set(false);
-        // Navigate to login anyway
         this.router.navigate(['/login']);
       },
     });
   }
 
-  resetIncidentForm(): void {
-    this.incidentForm.reset({
-      date: this.todayKey,
-      title: '',
-      severity: 'medium',
-      status: 'Open',
-      summary: '',
-      impact: '',
-      actions: '',
-      reportedBy: this.profile()?.fullName ?? '',
-    });
+  private loadDailySummary(): void {
+    if (!this.employeeId()) {
+      this.dailyError.set('No employee profile detected.');
+      return;
+    }
+
+    this.dailyReportLoading.set(true);
+    this.dailyError.set(null);
+
+    this.reportingService
+      .getDailyReport(this.employeeId(), this.todayKey)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (record) => {
+          const entries = sortEntries(record?.entries ?? []);
+          this.entries.set(entries);
+          this.lastDailyReportSavedAt.set(
+            record?.updatedAt ?? record?.createdAt ?? null
+          );
+          this.dailyReportLoading.set(false);
+        },
+        error: (error) => {
+          console.error('Error loading employee daily summary', error);
+          this.dailyReportLoading.set(false);
+          this.dailyError.set("Couldn't load today's daily summary.");
+        },
+      });
+  }
+
+  private refreshMissingDailyReportAlerts(): void {
+    if (!this.employeeId()) {
+      this.missingReportAlerts.set([]);
+      return;
+    }
+
+    this.reportingService
+      .getMissingDailyReportDates(this.employeeId(), 5)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (dates) => {
+          const friendly = dates.map(formatDateLabel);
+          this.missingReportAlerts.set(friendly);
+        },
+        error: (error) => {
+          console.error('Error loading missing reports summary', error);
+        },
+      });
+  }
+
+  private setActiveNav(url: string): void {
+    const match =
+      this.navItems.find((item) => url.startsWith(item.route)) ??
+      this.navItems[0];
+    this.activeNav.set(match);
   }
 }
 

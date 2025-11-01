@@ -4,132 +4,184 @@ import { ReactiveFormsModule, FormBuilder } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReportingService, DailyReportEntry, SaveDailyReportPayload } from '../services/reporting.service';
 import { RoleService } from '../state/role.service';
+import { MatCardModule } from '@angular/material/card';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
+import { MatInputModule } from '@angular/material/input';
+import { MatTableModule } from '@angular/material/table';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDividerModule } from '@angular/material/divider';
 
 interface DailyEntry { hour: string; activity: string; }
 
 @Component({
   selector: 'app-employee-daily-report',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    MatCardModule,
+    MatIconModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatSelectModule,
+    MatInputModule,
+    MatTableModule,
+    MatChipsModule,
+    MatProgressBarModule,
+    MatCheckboxModule,
+    MatDividerModule,
+  ],
   template: `
-  <section
-    *ngIf="missingReportAlerts().length"
-    class="mb-8 rounded-3xl border border-amber-300 bg-amber-50 px-5 py-4 text-amber-700 shadow-sm"
-  >
-    <p class="text-xs font-semibold uppercase tracking-wide">Daily report reminder</p>
-    <p class="mt-1 text-xs">
-      No submission logged for
-      <span class="font-semibold">{{ missingReportAlerts().join(', ') }}</span>.
-    </p>
+  <section *ngIf="missingReportAlerts().length" class="mb-6">
+    <mat-card class="border border-amber-300/60 bg-amber-50 text-amber-800">
+      <mat-card-content class="flex items-start gap-3 text-sm">
+        <mat-icon color="warn">campaign</mat-icon>
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wide">Daily report reminder</p>
+          <p class="mt-1 text-xs">
+            No submission logged for
+            <span class="font-semibold">{{ missingReportAlerts().join(', ') }}</span>.
+          </p>
+        </div>
+      </mat-card-content>
+    </mat-card>
   </section>
 
-  <section class="rounded-3xl border bg-card/90 shadow-lg ring-1 ring-primary/5">
-    <div class="border-b border-border/60 px-6 py-5 sm:flex sm:items-start sm:justify-between sm:gap-6">
+  <mat-card class="rounded-3xl bg-card/95 shadow-lg">
+    <mat-card-header class="gap-3">
+      <div mat-card-avatar class="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+        <mat-icon>schedule</mat-icon>
+      </div>
       <div>
-        <p class="text-xs font-semibold uppercase tracking-wide text-primary">Daily log</p>
-        <h2 class="mt-1 text-xl font-semibold text-foreground">Daily report for {{ todayLabel }}</h2>
-        <p class="mt-1 text-xs text-muted-foreground">
-          Capture each hour and send updates straight to your lead.
-        </p>
+        <mat-card-title class="text-xl font-semibold">Daily report for {{ todayLabel }}</mat-card-title>
+        <mat-card-subtitle>Capture each hour and send updates straight to your lead.</mat-card-subtitle>
       </div>
-      <div class="mt-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground sm:mt-0 sm:justify-end">
+      <div class="ml-auto flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <span *ngIf="lastDailyReportSavedAt()">Saved {{ lastDailyReportSavedAt() | date: 'shortTime' }}</span>
-        <button type="button" class="inline-flex items-center gap-1 rounded-full border border-input px-3 py-1 font-semibold text-muted-foreground transition hover:text-foreground" (click)="resetForm()">Reset hour form</button>
-        <button type="button" class="inline-flex items-center gap-1 rounded-full border border-input px-3 py-1 font-semibold text-muted-foreground transition hover:text-foreground" (click)="clearEntries()">Clear entries</button>
+        <button mat-stroked-button color="primary" type="button" (click)="resetForm()">Reset hour form</button>
+        <button mat-stroked-button type="button" (click)="clearEntries()">Clear entries</button>
       </div>
-    </div>
+    </mat-card-header>
 
-    <div class="px-6 pb-6 pt-5">
-      <div *ngIf="dailyReportError()" class="mb-4 rounded-2xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-xs text-destructive">{{ dailyReportError() }}</div>
-      <div *ngIf="dailyReportNotice()" class="mb-4 rounded-2xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-600">{{ dailyReportNotice() }}</div>
+    <mat-divider></mat-divider>
+
+    <mat-card-content class="px-6 py-6">
+      <div *ngIf="dailyReportError()" class="mb-4 rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">{{ dailyReportError() }}</div>
+      <div *ngIf="dailyReportNotice()" class="mb-4 rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-600">{{ dailyReportNotice() }}</div>
 
       <div *ngIf="dailyReportLoading()" class="rounded-2xl border border-dashed border-input bg-background/80 px-6 py-10 text-center text-sm text-muted-foreground">Loading today's log...</div>
 
       <ng-container *ngIf="!dailyReportLoading()">
-        <div class="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)]">
-          <div class="space-y-6">
-            <form class="grid gap-3 sm:grid-cols-[minmax(0,140px)_1fr_auto]" [formGroup]="entryForm" (ngSubmit)="submitEntry()">
-              <label class="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-                Hour
-                <select formControlName="hour" class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none ring-primary/20 transition focus:ring-2">
-                  <option *ngFor="let slot of timeSlots" [value]="slot">{{ slot }}</option>
-                </select>
-              </label>
-              <label class="flex flex-col gap-1 text-xs font-medium text-muted-foreground sm:col-span-1">
-                What did you work on?
-                <textarea formControlName="activity" rows="2" placeholder="Draft release notes, resolved customer escalations, paired with QA..." class="min-h-[2.75rem] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none ring-primary/20 transition focus:ring-2"></textarea>
-              </label>
-              <button type="submit" class="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90">{{ editingHour() ? 'Update hour' : 'Add hour' }}</button>
-            </form>
+        <form
+          class="grid gap-4 md:grid-cols-[minmax(0,200px)_1fr_auto]"
+          [formGroup]="entryForm"
+          (ngSubmit)="submitEntry()"
+        >
+          <mat-form-field appearance="outline">
+            <mat-label>Hour</mat-label>
+            <mat-select formControlName="hour">
+              <mat-option *ngFor="let slot of timeSlots" [value]="slot">{{ slot }}</mat-option>
+            </mat-select>
+          </mat-form-field>
 
-            <div *ngIf="entries().length; else emptyEntries" class="overflow-hidden rounded-2xl border border-input">
-              <table class="min-w-full divide-y divide-border text-sm">
-                <thead class="bg-muted/60 text-[11px] uppercase tracking-wide text-muted-foreground">
-                  <tr>
-                    <th class="px-4 py-3 text-left font-medium">Hour</th>
-                    <th class="px-4 py-3 text-left font-medium">Summary</th>
-                    <th class="px-4 py-3 text-right font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-border bg-background/70">
-                  <tr *ngFor="let entry of entries()" class="align-top">
-                    <td class="px-4 py-3 font-semibold text-foreground">{{ entry.hour }}</td>
-                    <td class="px-4 py-3 text-sm text-muted-foreground">{{ entry.activity }}</td>
-                    <td class="px-4 py-3">
-                      <div class="flex items-center justify-end gap-2 text-xs font-semibold">
-                        <button type="button" class="rounded-lg border border-input px-2.5 py-1 text-muted-foreground transition hover:text-foreground" (click)="editEntry(entry)">Edit</button>
-                        <button type="button" class="rounded-lg border border-destructive/40 px-2.5 py-1 text-destructive transition hover:bg-destructive/10" (click)="removeEntry(entry.hour)">Remove</button>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
+          <mat-form-field appearance="outline">
+            <mat-label>What did you work on?</mat-label>
+            <textarea
+              matInput
+              formControlName="activity"
+              rows="2"
+              placeholder="Draft release notes, resolved customer escalations, paired with QA..."
+            ></textarea>
+          </mat-form-field>
+
+          <div class="flex items-end justify-end">
+            <button mat-flat-button color="primary" type="submit">
+              {{ editingHour() ? 'Update hour' : 'Add hour' }}
+            </button>
+          </div>
+        </form>
+
+        <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)]">
+          <div>
+            <div *ngIf="entries().length; else emptyEntries" class="overflow-hidden rounded-2xl border border-input bg-background/80">
+              <table mat-table [dataSource]="entries()" class="w-full text-sm">
+                <ng-container matColumnDef="hour">
+                  <th mat-header-cell *matHeaderCellDef class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Hour</th>
+                  <td mat-cell *matCellDef="let entry" class="px-4 py-3 font-semibold text-foreground">{{ entry.hour }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="activity">
+                  <th mat-header-cell *matHeaderCellDef class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Summary</th>
+                  <td mat-cell *matCellDef="let entry" class="px-4 py-3 text-muted-foreground">{{ entry.activity }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="actions">
+                  <th mat-header-cell *matHeaderCellDef class="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Actions</th>
+                  <td mat-cell *matCellDef="let entry" class="px-4 py-3 text-right">
+                    <button mat-stroked-button color="primary" type="button" class="mr-2 text-xs" (click)="editEntry(entry)">Edit</button>
+                    <button mat-stroked-button color="warn" type="button" class="text-xs" (click)="removeEntry(entry.hour)">Remove</button>
+                  </td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
               </table>
             </div>
             <ng-template #emptyEntries>
-              <div class="rounded-2xl border border-dashed border-input bg-background/80 px-6 py-10 text-center text-sm text-muted-foreground">No entries yet. Add what you accomplished this hour so your lead sees steady progress.</div>
+              <div class="rounded-2xl border border-dashed border-input bg-background/80 px-6 py-10 text-center text-sm text-muted-foreground">
+                No entries yet. Add what you accomplished this hour so your lead sees steady progress.
+              </div>
             </ng-template>
           </div>
 
           <div class="space-y-4">
-            <div class="rounded-2xl border border-input bg-background/70 p-5">
-              <div class="flex items-center justify-between text-xs text-muted-foreground">
-                <span class="font-semibold text-foreground">Hours logged</span>
-                <span>{{ hoursLogged() }} / {{ timeSlots.length }}</span>
-              </div>
-              <div class="mt-3 h-2 w-full rounded-full bg-muted">
-                <div class="h-full rounded-full bg-primary transition-all" [style.width.%]="completionPercent()"></div>
-              </div>
-              <p class="mt-2 text-xs text-muted-foreground">{{ completionPercent() }}% of day captured</p>
-              <div *ngIf="missingCount()" class="mt-3 inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-[11px] font-semibold text-amber-700">
-                <span class="inline-flex size-2 rounded-full bg-amber-500"></span>
-                {{ missingCount() }} previous day(s) missing
-              </div>
-            </div>
+            <mat-card class="border border-input bg-background/70">
+              <mat-card-content>
+                <div class="flex items-center justify-between text-xs text-muted-foreground">
+                  <span class="font-semibold text-foreground">Hours logged</span>
+                  <span>{{ hoursLogged() }} / {{ timeSlots.length }}</span>
+                </div>
+                <mat-progress-bar class="mt-3 rounded-full" mode="determinate" [value]="completionPercent()"></mat-progress-bar>
+                <p class="mt-2 text-xs text-muted-foreground">{{ completionPercent() }}% of day captured</p>
+                <mat-chip *ngIf="missingCount()" color="warn" selected class="mt-3">
+                  <mat-icon matChipAvatar>priority_high</mat-icon>
+                  {{ missingCount() }} previous day(s) missing
+                </mat-chip>
+              </mat-card-content>
+            </mat-card>
 
-            <form class="space-y-3 rounded-2xl border border-input bg-background/70 p-5" [formGroup]="dailyMetaForm" (ngSubmit)="saveDailyReport()">
-              <label class="flex flex-col gap-2 text-xs font-medium text-muted-foreground">
-                Notes for your lead
-                <textarea formControlName="notes" rows="3" placeholder="Highlights, blockers, or reminders..." class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none ring-primary/20 transition focus:ring-2"></textarea>
-              </label>
+            <mat-card class="border border-input bg-background/70">
+              <mat-card-content>
+                <form class="space-y-3" [formGroup]="dailyMetaForm" (ngSubmit)="saveDailyReport()">
+                  <mat-form-field appearance="outline" class="w-full">
+                    <mat-label>Notes for your lead</mat-label>
+                    <textarea matInput formControlName="notes" rows="3" placeholder="Highlights, blockers, or reminders..."></textarea>
+                  </mat-form-field>
 
-              <label class="flex items-start gap-3 rounded-xl bg-card/60 p-3 text-xs text-muted-foreground">
-                <input type="checkbox" formControlName="complete" class="mt-1 size-4 rounded border-input text-primary focus:ring-primary/30" />
-                <span>
-                  <span class="block font-semibold text-foreground">Mark day complete</span>
-                  <span class="mt-1 block leading-5">Uncheck if you plan to add more context later today.</span>
-                </span>
-              </label>
+                  <mat-checkbox formControlName="complete">
+                    Mark day complete
+                  </mat-checkbox>
+                  <p class="-mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                    Uncheck if you plan to add more context later today.
+                  </p>
 
-              <button type="submit" class="w-full rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-70" [disabled]="dailyReportSaving()">
-                <ng-container *ngIf="dailyReportSaving(); else saveLabel">Saving...</ng-container>
-                <ng-template #saveLabel>Save daily report</ng-template>
-              </button>
-            </form>
+                  <button mat-flat-button color="primary" type="submit" class="w-full" [disabled]="dailyReportSaving()">
+                    <ng-container *ngIf="dailyReportSaving(); else saveLabel">Saving...</ng-container>
+                    <ng-template #saveLabel>Save daily report</ng-template>
+                  </button>
+                </form>
+              </mat-card-content>
+            </mat-card>
           </div>
         </div>
       </ng-container>
-    </div>
-  </section>
+    </mat-card-content>
+  </mat-card>
   `,
 })
 export class EmployeeDailyReportComponent implements OnInit {
@@ -152,6 +204,8 @@ export class EmployeeDailyReportComponent implements OnInit {
   readonly dailyReportNotice = signal<string | null>(null);
   readonly lastDailyReportSavedAt = signal<Date | null>(null);
   readonly missingReportAlerts = signal<string[]>([]);
+
+  readonly displayedColumns = ['hour', 'activity', 'actions'];
 
   readonly hoursLogged = computed(() => this.entries().length);
   readonly completionPercent = computed(() => {
