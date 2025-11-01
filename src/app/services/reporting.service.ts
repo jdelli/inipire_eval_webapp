@@ -174,6 +174,44 @@ export class ReportingService {
     );
   }
 
+  /**
+   * Create an incident report for an employee
+   * Path: employees/{employeeId}/irReports/{reportId}
+   */
+  createEmployeeIncidentReport(
+    employeeId: string,
+    payload: IncidentReportPayload
+  ): Observable<string> {
+    const incidentsRef = collection(
+      this.firestore,
+      `employees/${employeeId}/irReports`
+    );
+    const now = Timestamp.now();
+
+    return from(
+      addDoc(incidentsRef, {
+        ...payload,
+        createdAt: now,
+        updatedAt: now,
+      }).then((docRef) => docRef.id)
+    );
+  }
+
+  /**
+   * Generic method to create incident report for either employees or trainees
+   */
+  createIncidentReportFor(
+    personId: string,
+    source: 'employees' | 'trainingRecords',
+    payload: IncidentReportPayload
+  ): Observable<string> {
+    if (source === 'employees') {
+      return this.createEmployeeIncidentReport(personId, payload);
+    } else {
+      return this.createIncidentReport(personId, payload);
+    }
+  }
+
   private buildLookbackDates(
     lookbackDays: number,
     excludeWeekends: boolean

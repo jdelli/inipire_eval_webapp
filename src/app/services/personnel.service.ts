@@ -33,8 +33,8 @@ export class PersonnelService {
       departmentFilter ? `department=${departmentFilter}` : 'all departments'
     );
 
-    const employeesRef = collection(this.firestore, 'employees');
-    const constraints = [];
+  const employeesRef = collection(this.firestore, 'employees');
+  const constraints = [];
 
     if (resolvedCompanyId) {
       constraints.push(where('companyId', '==', resolvedCompanyId));
@@ -42,6 +42,8 @@ export class PersonnelService {
     if (departmentFilter) {
       constraints.push(where('department', '==', departmentFilter));
     }
+    // Only active employees
+    constraints.push(where('status', '==', 'Active'));
 
     const q = constraints.length ? query(employeesRef, ...constraints) : employeesRef;
 
@@ -57,6 +59,11 @@ export class PersonnelService {
     );
   }
 
+  // Return only the latest record for each person based on updatedAt/createdAt
+  getEmployeesCanonical(companyId?: string | null): Observable<Employee[]> {
+    return this.getEmployees(companyId).pipe(map((items) => this.dedupeLatest(items)));
+  }
+
   getTrainees(companyId?: string | null): Observable<Trainee[]> {
     const resolvedCompanyId =
       companyId === null ? null : companyId ?? this.defaultCompanyId;
@@ -68,8 +75,8 @@ export class PersonnelService {
       departmentFilter ? `department=${departmentFilter}` : 'all departments'
     );
 
-    const traineesRef = collection(this.firestore, 'trainingRecords');
-    const constraints = [];
+  const traineesRef = collection(this.firestore, 'trainingRecords');
+  const constraints = [];
 
     if (resolvedCompanyId) {
       constraints.push(where('companyId', '==', resolvedCompanyId));
@@ -77,6 +84,8 @@ export class PersonnelService {
     if (departmentFilter) {
       constraints.push(where('department', '==', departmentFilter));
     }
+    // Only active trainees
+    constraints.push(where('status', '==', 'Active'));
 
     const q = constraints.length ? query(traineesRef, ...constraints) : traineesRef;
 
@@ -90,6 +99,11 @@ export class PersonnelService {
         return trainees;
       })
     );
+  }
+
+  // Return only the latest record for each trainee based on updatedAt/createdAt
+  getTraineesCanonical(companyId?: string | null): Observable<Trainee[]> {
+    return this.getTrainees(companyId).pipe(map((items) => this.dedupeLatest(items)));
   }
 
   getEmployeesByDepartment(
@@ -141,5 +155,47 @@ export class PersonnelService {
         members,
       }))
       .sort((a, b) => a.department.localeCompare(b.department));
+  }
+
+  // ---------- Helpers: dedupe and timestamps ----------
+  private normalizeName(p: any): string {
+    const first = (p.firstName ?? '').toString();
+    const last = (p.lastName ?? '').toString();
+    return `${first} ${last}`.replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+
+  private identityKey(p: any): string {
+    const name = this.normalizeName(p);
+    const dept = (p.department ?? '').toString().trim().toLowerCase();
+    const email = (p.email ?? p.emailAddress ?? '').toString().trim().toLowerCase();
+    return `${name}|${dept}|${email}`;
+  }
+
+  private toMillis(ts: any): number {
+    if (!ts) return 0;
+    if (typeof ts === 'object' && typeof ts.seconds === 'number') {
+      return ts.seconds * 1000 + Math.floor((ts.nanoseconds ?? 0) / 1_000_000);
+    }
+    const parsed = Date.parse(ts);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+
+  private dedupeLatest<T extends any>(items: T[]): T[] {
+    const map = new Map<string, T>();
+    for (const p of items) {
+      const key = this.identityKey(p);
+      if (!key) continue;
+      const existing = map.get(key);
+      if (!existing) {
+        map.set(key, p);
+        continue;
+      }
+      const existingTs = this.toMillis((existing as any).updatedAt ?? (existing as any).createdAt);
+      const currentTs = this.toMillis((p as any).updatedAt ?? (p as any).createdAt);
+      if (currentTs >= existingTs) {
+        map.set(key, p);
+      }
+    }
+    return Array.from(map.values());
   }
 }

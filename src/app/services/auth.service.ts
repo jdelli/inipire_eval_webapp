@@ -24,6 +24,9 @@ export interface RegisterPayload {
   fullName: string;
   department: string;
   isTeamleader: boolean;
+  employeeId?: string;
+  employeeSource?: 'employees' | 'trainingRecords';
+  employeeName?: string;
 }
 
 export interface LoginPayload {
@@ -37,6 +40,9 @@ export interface UserProfile {
   fullName: string;
   department: string;
   isTeamleader: boolean;
+  employeeId?: string;
+  employeeSource?: 'employees' | 'trainingRecords';
+  employeeName?: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }
@@ -72,6 +78,9 @@ export class AuthService {
             fullName: data['fullName'] ?? firebaseUser.displayName ?? '',
             department: data['department'] ?? '',
             isTeamleader: !!data['isTeamleader'],
+            employeeId: data['employeeId'],
+            employeeSource: data['employeeSource'],
+            employeeName: data['employeeName'],
             createdAt: data['createdAt'],
             updatedAt: data['updatedAt'],
           } as UserProfile;
@@ -87,7 +96,7 @@ export class AuthService {
   );
 
   register(payload: RegisterPayload): Observable<void> {
-    const { email, password, fullName, department, isTeamleader } = payload;
+    const { email, password, fullName, department, isTeamleader, employeeId, employeeSource, employeeName } = payload;
     return from(
       createUserWithEmailAndPassword(this.auth, email, password).then(
         async (cred: UserCredential) => {
@@ -97,7 +106,8 @@ export class AuthService {
               this.firestore,
               `TLtraineeUsers/${cred.user.uid}`
             );
-            await setDoc(docRef, {
+            
+            const userData: any = {
               uid: cred.user.uid,
               email,
               fullName,
@@ -105,7 +115,16 @@ export class AuthService {
               isTeamleader,
               createdAt: Timestamp.now(),
               updatedAt: Timestamp.now(),
-            });
+            };
+
+            // Add employee reference if provided
+            if (employeeId && employeeSource) {
+              userData.employeeId = employeeId;
+              userData.employeeSource = employeeSource;
+              userData.employeeName = employeeName || '';
+            }
+
+            await setDoc(docRef, userData);
           }
         }
       )
