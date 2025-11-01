@@ -2,12 +2,20 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { PersonnelService } from '../services/personnel.service';
-import { EvaluationService, SavedEvaluation } from '../services/evaluation.service';
+import { EvaluationService } from '../services/evaluation.service';
 import { Employee, Trainee } from '../models/personnel.model';
 import { forkJoin, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { StatusChartComponent, ChartData } from '../components/status-chart/status-chart.component';
 import { RoleService } from '../state/role.service';
+import { MatCardModule } from '@angular/material/card';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { animate, style, transition, trigger } from '@angular/animations';
 
 // Collapsible sections for the team-leader (shell) layout
 const DASHBOARD_SECTION_KEYS = [
@@ -16,6 +24,7 @@ const DASHBOARD_SECTION_KEYS = [
   'traineeProgress',
   'ratingDistribution',
   'departmentPerformance',
+  'evaluationVelocity',
   'recentEvaluations',
   'topPerformers',
 ] as const;
@@ -44,8 +53,33 @@ interface Performer {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, StatusChartComponent],
+  imports: [
+    CommonModule,
+    RouterModule,
+    StatusChartComponent,
+    MatCardModule,
+    MatButtonModule,
+    MatIconModule,
+    MatChipsModule,
+    MatTooltipModule,
+    MatDividerModule,
+    MatProgressBarModule,
+  ],
   templateUrl: './dashboard.component.html',
+  animations: [
+    trigger('fadeInUp', [
+      transition(':enter', [
+        style({ opacity: 0, transform: 'translateY(12px)' }),
+        animate('250ms 40ms ease-out', style({ opacity: 1, transform: 'none' })),
+      ]),
+    ]),
+    trigger('scaleIn', [
+      transition(':enter', [
+        style({ opacity: 0, transform: 'scale(0.94)' }),
+        animate('220ms 20ms ease-out', style({ opacity: 1, transform: 'scale(1)' })),
+      ]),
+    ]),
+  ],
 })
 export class DashboardComponent {
   private readonly personnelService = inject(PersonnelService);
@@ -206,12 +240,109 @@ export class DashboardComponent {
   readonly employeeSummary = computed(() => this.calculateSummary(this.employees()));
   readonly traineeSummary = computed(() => this.calculateSummary(this.trainees()));
 
+  readonly totalHeadcount = computed(() => this.employeeSummary().total + this.traineeSummary().total);
+
+  readonly engagementScore = computed(() => {
+    const employeeCounts = this.employeeSummary().counts;
+    const traineeCounts = this.traineeSummary().counts;
+    const activeEmployees = employeeCounts['Active'] ?? 0;
+    const activeTrainees = traineeCounts['Active'] ?? 0;
+    const total = this.totalHeadcount();
+    if (!total) return 0;
+    return Math.round(((activeEmployees + activeTrainees) / total) * 100);
+  });
+
+  readonly riskScore = computed(() => {
+    const employeeCounts = this.employeeSummary().counts;
+    const traineeCounts = this.traineeSummary().counts;
+    const atRisk = (employeeCounts['At Risk'] ?? 0) + (traineeCounts['At Risk'] ?? 0);
+    const watch = (employeeCounts['Watch'] ?? 0) + (traineeCounts['Watch'] ?? 0);
+    const total = this.totalHeadcount();
+    if (!total) return 0;
+    const ratio = ((atRisk + watch) / total) * 100;
+    return Math.min(100, Math.round(ratio));
+  });
+
+  readonly evaluationCoverage = computed(() => {
+    const evals = this.allEvaluations().length;
+    const total = this.totalHeadcount();
+    if (!total) return 0;
+    const coverage = Math.round((evals / total) * 100);
+    return Math.min(100, coverage);
+  });
+
+  readonly keyMetrics = computed(() => {
+    const avgRating = Number(this.overallAverageRating());
+    const headcount = this.totalHeadcount();
+    const evaluationCount = this.allEvaluations().length;
+
+    return [
+      {
+        label: 'Total Headcount',
+        primary: headcount,
+        helper: `${this.employeeSummary().total} employees · ${this.traineeSummary().total} trainees`,
+        accent: 'from-sky-500/20 to-sky-600/30',
+        icon: 'groups',
+        progress: this.totalHeadcount() ? Math.min(100, Math.round((this.employeeSummary().total / Math.max(1, headcount)) * 100)) : 0,
+      },
+      {
+        label: 'Engagement Pulse',
+        primary: `${this.engagementScore()}%`,
+        helper: 'Active vs. dormant team members',
+        accent: 'from-emerald-500/20 to-emerald-600/30',
+        icon: 'favorite',
+        progress: this.engagementScore(),
+      },
+      {
+        label: 'Average Rating',
+        primary: `${avgRating.toFixed(1)}/5`,
+        helper: `${evaluationCount} recent evaluations`,
+        accent: 'from-amber-500/20 to-orange-500/25',
+        icon: 'auto_graph',
+        progress: Math.round((avgRating / 5) * 100),
+      },
+      {
+        label: 'Evaluation Coverage',
+        primary: `${this.evaluationCoverage()}%`,
+        helper: 'Share of team with fresh reviews',
+        accent: 'from-indigo-500/20 to-indigo-600/30',
+        icon: 'task_alt',
+        progress: this.evaluationCoverage(),
+      },
+    ];
+  });
+
   private createChartData(summary: { counts: Record<string, number> }): ChartData[] {
     return Object.entries(summary.counts).map(([name, value]) => ({ name, value }));
   }
 
   readonly employeeChartData = computed(() => this.createChartData(this.employeeSummary()));
   readonly traineeChartData = computed(() => this.createChartData(this.traineeSummary()));
+
+  readonly evaluationVelocity = computed<ChartData[]>(() => {
+    const evals = this.allEvaluations();
+    if (!evals.length) {
+      return [];
+    }
+
+    const buckets = new Map<string, number>();
+    const now = new Date();
+
+    for (let i = 5; i >= 0; i -= 1) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = this.monthLabel(date);
+      buckets.set(key, 0);
+    }
+
+    evals.forEach((evaluation) => {
+      const key = this.monthLabel(evaluation.date);
+      if (buckets.has(key)) {
+        buckets.set(key, (buckets.get(key) ?? 0) + 1);
+      }
+    });
+
+    return Array.from(buckets.entries()).map(([name, value]) => ({ name, value }));
+  });
 
   readonly recentEvaluations = computed<EvaluationWithPerson[]>(() => {
     return this.allEvaluations()
@@ -298,4 +429,9 @@ export class DashboardComponent {
     const sum = evals.reduce((acc, e) => acc + e.average, 0);
     return (sum / evals.length).toFixed(1);
   });
+
+  private monthLabel(date: Date): string {
+    const formatter = new Intl.DateTimeFormat('en-US', { month: 'short' });
+    return formatter.format(date);
+  }
 }

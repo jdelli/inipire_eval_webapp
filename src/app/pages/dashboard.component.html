@@ -1,151 +1,204 @@
 <div class="space-y-6">
-  <header class="flex items-start justify-between gap-2">
-    <div>
-      <h2 class="text-xl font-semibold tracking-tight text-foreground">Executive Dashboard</h2>
-      <p class="text-muted-foreground">An overview of organizational health and strategic alignment.</p>
+  <mat-card class="relative overflow-hidden border bg-gradient-to-tr from-primary/5 via-background to-background shadow-sm">
+    <div class="absolute inset-y-0 right-0 w-48 skew-x-[-16deg] bg-primary/5 blur-3xl opacity-70"></div>
+    <div class="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div class="max-w-2xl space-y-2">
+        <mat-chip color="primary" selected class="bg-primary/10 text-primary">Leadership Pulse</mat-chip>
+        <h2 class="text-2xl font-semibold tracking-tight text-foreground">Executive Dashboard</h2>
+        <p class="text-sm text-muted-foreground">
+          Monitor people health, evaluation coverage, and department momentum in real-time.
+        </p>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <button
+          mat-stroked-button
+          color="primary"
+          type="button"
+          (click)="toggleSection('kpis')"
+          [attr.aria-expanded]="!isCollapsed('kpis')"
+        >
+          <mat-icon class="transform transition" [style.transform]="isCollapsed('kpis') ? 'rotate(180deg)' : 'rotate(0deg)'">unfold_less</mat-icon>
+          {{ isCollapsed('kpis') ? 'Show key metrics' : 'Hide key metrics' }}
+        </button>
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          routerLink="/weekly-evaluation"
+        >
+          <mat-icon>auto_fix_high</mat-icon>
+          Launch Evaluations
+        </button>
+      </div>
     </div>
-    <button
-      type="button"
-      class="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2 py-1 text-xs text-muted-foreground transition hover:text-foreground"
-      (click)="toggleSection('kpis')"
-      [attr.aria-expanded]="!isCollapsed('kpis')"
-      title="Collapse/expand overview"
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="size-4 transition-transform" [style.transform]="isCollapsed('kpis') ? 'rotate(180deg)' : 'rotate(0deg)'"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span>{{ isCollapsed('kpis') ? 'Expand' : 'Collapse' }}</span>
-    </button>
-  </header>
+  </mat-card>
 
-  <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" *ngIf="!isCollapsed('kpis')">
-    <article class="flex flex-col justify-between rounded-2xl border bg-card/80 p-5 shadow-sm">
-      <p class="text-sm font-medium text-muted-foreground">Total Employees</p>
-      <p class="mt-2 text-3xl font-semibold tracking-tight">{{ employeeSummary().total }}</p>
-    </article>
-    <article class="flex flex-col justify-between rounded-2xl border bg-card/80 p-5 shadow-sm">
-      <p class="text-sm font-medium text-muted-foreground">Total Trainees</p>
-      <p class="mt-2 text-3xl font-semibold tracking-tight">{{ traineeSummary().total }}</p>
-    </article>
-    <article class="flex flex-col justify-between rounded-2xl border bg-card/80 p-5 shadow-sm">
-      <p class="text-sm font-medium text-muted-foreground">Total Evaluations</p>
-      <p class="mt-2 text-3xl font-semibold tracking-tight">{{ allEvaluations().length }}</p>
-    </article>
-    <article class="flex flex-col justify-between rounded-2xl border bg-card/80 p-5 shadow-sm">
-      <p class="text-sm font-medium text-muted-foreground">Avg. Rating</p>
-      <p class="mt-2 text-3xl font-semibold tracking-tight">
-        {{ overallAverageRating() }}/5.0
-      </p>
-    </article>
+  <section
+    class="grid gap-4 md:grid-cols-2 xl:grid-cols-4"
+    *ngIf="!isCollapsed('kpis')"
+  >
+    <mat-card
+      *ngFor="let metric of keyMetrics(); index as i"
+      class="group overflow-hidden rounded-2xl border bg-card/90 shadow md:hover:shadow-lg md:transition md:duration-200"
+      [@scaleIn]
+    >
+      <div class="absolute inset-x-0 top-0 h-32 bg-gradient-to-br {{ metric.accent }} opacity-90 blur-3xl"></div>
+      <div class="relative z-10 flex flex-col gap-4 p-5">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground/80">{{ metric.label }}</span>
+          <mat-icon class="text-primary/90">{{ metric.icon }}</mat-icon>
+        </div>
+        <div>
+          <p class="text-3xl font-semibold tracking-tight text-foreground">{{ metric.primary }}</p>
+          <p class="mt-1 text-xs text-muted-foreground">{{ metric.helper }}</p>
+        </div>
+        <mat-progress-bar
+          color="primary"
+          mode="determinate"
+          [value]="metric.progress"
+          class="rounded-full bg-primary/10"
+        ></mat-progress-bar>
+      </div>
+    </mat-card>
   </section>
 
-  <section class="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
-    <article class="rounded-2xl border bg-card/80 p-6 shadow-sm">
+  <section class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+    <mat-card class="rounded-2xl border bg-card/90 shadow-sm" [@fadeInUp]>
       <div class="flex items-center justify-between">
         <div>
           <h3 class="text-lg font-semibold tracking-tight">Employee Status</h3>
-          <p class="text-sm text-muted-foreground">Status breakdown</p>
+          <p class="text-sm text-muted-foreground">Status distribution for employees</p>
         </div>
-        <button type="button" class="rounded-lg border border-input bg-background p-1 text-muted-foreground transition hover:text-foreground" (click)="toggleSection('employeeStatus')" [attr.aria-expanded]="!isCollapsed('employeeStatus')" title="Collapse">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="size-4 transition-transform" [style.transform]="isCollapsed('employeeStatus') ? 'rotate(180deg)' : 'rotate(0deg)'"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <button mat-icon-button (click)="toggleSection('employeeStatus')" [attr.aria-expanded]="!isCollapsed('employeeStatus')" matTooltip="Collapse">
+          <mat-icon class="transition" [style.transform]="isCollapsed('employeeStatus') ? 'rotate(180deg)' : 'rotate(0deg)'">unfold_less</mat-icon>
         </button>
       </div>
       <div class="mt-4" *ngIf="!isCollapsed('employeeStatus')">
-        <app-status-chart [data]="employeeChartData()"></app-status-chart>
+        <app-status-chart [data]="employeeChartData()" variant="doughnut"></app-status-chart>
       </div>
-    </article>
+    </mat-card>
 
-    <article class="rounded-2xl border bg-card/80 p-6 shadow-sm">
+    <mat-card class="rounded-2xl border bg-card/90 shadow-sm" [@fadeInUp]>
       <div class="flex items-center justify-between">
         <div>
           <h3 class="text-lg font-semibold tracking-tight">Trainee Progress</h3>
-          <p class="text-sm text-muted-foreground">Progress breakdown</p>
+          <p class="text-sm text-muted-foreground">Current trainee milestones</p>
         </div>
-        <button type="button" class="rounded-lg border border-input bg-background p-1 text-muted-foreground transition hover:text-foreground" (click)="toggleSection('traineeProgress')" [attr.aria-expanded]="!isCollapsed('traineeProgress')" title="Collapse">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="size-4 transition-transform" [style.transform]="isCollapsed('traineeProgress') ? 'rotate(180deg)' : 'rotate(0deg)'"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <button mat-icon-button (click)="toggleSection('traineeProgress')" [attr.aria-expanded]="!isCollapsed('traineeProgress')" matTooltip="Collapse">
+          <mat-icon class="transition" [style.transform]="isCollapsed('traineeProgress') ? 'rotate(180deg)' : 'rotate(0deg)'">unfold_less</mat-icon>
         </button>
       </div>
       <div class="mt-4" *ngIf="!isCollapsed('traineeProgress')">
-        <app-status-chart [data]="traineeChartData()"></app-status-chart>
+        <app-status-chart [data]="traineeChartData()" variant="doughnut"></app-status-chart>
       </div>
-    </article>
+    </mat-card>
 
-    <article class="rounded-2xl border bg-card/80 p-6 shadow-sm">
+    <mat-card class="rounded-2xl border bg-card/90 shadow-sm" [@fadeInUp]>
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-semibold tracking-tight">Evaluation Velocity</h3>
+          <p class="text-sm text-muted-foreground">Reviews completed per month</p>
+        </div>
+        <button mat-icon-button (click)="toggleSection('evaluationVelocity')" [attr.aria-expanded]="!isCollapsed('evaluationVelocity')" matTooltip="Collapse">
+          <mat-icon class="transition" [style.transform]="isCollapsed('evaluationVelocity') ? 'rotate(180deg)' : 'rotate(0deg)'">unfold_less</mat-icon>
+        </button>
+      </div>
+      <div class="mt-4" *ngIf="!isCollapsed('evaluationVelocity')">
+        <app-status-chart [data]="evaluationVelocity()" variant="bar"></app-status-chart>
+      </div>
+    </mat-card>
+
+    <mat-card class="rounded-2xl border bg-card/90 shadow-sm xl:col-span-2" [@fadeInUp]>
       <div class="flex items-center justify-between">
         <div>
           <h3 class="text-lg font-semibold tracking-tight">Rating Distribution</h3>
-          <p class="text-sm text-muted-foreground">Evaluation ratings</p>
+          <p class="text-sm text-muted-foreground">Spread of evaluation outcomes</p>
         </div>
-        <button type="button" class="rounded-lg border border-input bg-background p-1 text-muted-foreground transition hover:text-foreground" (click)="toggleSection('ratingDistribution')" [attr.aria-expanded]="!isCollapsed('ratingDistribution')" title="Collapse">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="size-4 transition-transform" [style.transform]="isCollapsed('ratingDistribution') ? 'rotate(180deg)' : 'rotate(0deg)'"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <button mat-icon-button (click)="toggleSection('ratingDistribution')" [attr.aria-expanded]="!isCollapsed('ratingDistribution')" matTooltip="Collapse">
+          <mat-icon class="transition" [style.transform]="isCollapsed('ratingDistribution') ? 'rotate(180deg)' : 'rotate(0deg)'">unfold_less</mat-icon>
         </button>
       </div>
       <div class="mt-4" *ngIf="!isCollapsed('ratingDistribution')">
-        <app-status-chart [data]="averageRatingTrend()"></app-status-chart>
+        <app-status-chart [data]="averageRatingTrend()" variant="bar"></app-status-chart>
       </div>
-    </article>
+    </mat-card>
 
-    <article class="rounded-2xl border bg-card/80 p-6 shadow-sm">
+    <mat-card class="rounded-2xl border bg-card/90 shadow-sm" [@fadeInUp]>
       <div class="flex items-center justify-between">
         <div>
           <h3 class="text-lg font-semibold tracking-tight">Department Performance</h3>
-          <p class="text-sm text-muted-foreground">Average by department</p>
+          <p class="text-sm text-muted-foreground">Average rating per department</p>
         </div>
-        <button type="button" class="rounded-lg border border-input bg-background p-1 text-muted-foreground transition hover:text-foreground" (click)="toggleSection('departmentPerformance')" [attr.aria-expanded]="!isCollapsed('departmentPerformance')" title="Collapse">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="size-4 transition-transform" [style.transform]="isCollapsed('departmentPerformance') ? 'rotate(180deg)' : 'rotate(0deg)'"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <button mat-icon-button (click)="toggleSection('departmentPerformance')" [attr.aria-expanded]="!isCollapsed('departmentPerformance')" matTooltip="Collapse">
+          <mat-icon class="transition" [style.transform]="isCollapsed('departmentPerformance') ? 'rotate(180deg)' : 'rotate(0deg)'">unfold_less</mat-icon>
         </button>
       </div>
       <div class="mt-4" *ngIf="!isCollapsed('departmentPerformance')">
-        <app-status-chart [data]="departmentPerformance()"></app-status-chart>
+        <app-status-chart [data]="departmentPerformance()" variant="bar"></app-status-chart>
       </div>
-    </article>
+    </mat-card>
   </section>
 
-  <section class="grid gap-6 lg:grid-cols-3">
-    <article class="rounded-2xl border bg-card/80 p-6 shadow-sm lg:col-span-2">
+  <section class="grid gap-6 xl:grid-cols-3">
+    <mat-card class="rounded-2xl border bg-card/95 shadow-sm xl:col-span-2" [@fadeInUp]>
       <div class="flex items-center justify-between">
         <div>
           <h3 class="text-lg font-semibold tracking-tight">Recent Evaluations</h3>
-          <p class="text-sm text-muted-foreground">Latest performance reviews submitted.</p>
+          <p class="text-sm text-muted-foreground">
+            Latest reviews submitted across teams.
+          </p>
         </div>
         <div class="flex items-center gap-2">
-          <button type="button" class="rounded-lg border border-input bg-background p-1 text-muted-foreground transition hover:text-foreground" (click)="toggleSection('recentEvaluations')" [attr.aria-expanded]="!isCollapsed('recentEvaluations')" title="Collapse">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="size-4 transition-transform" [style.transform]="isCollapsed('recentEvaluations') ? 'rotate(180deg)' : 'rotate(0deg)'"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <button mat-icon-button (click)="toggleSection('recentEvaluations')" [attr.aria-expanded]="!isCollapsed('recentEvaluations')" matTooltip="Collapse">
+            <mat-icon class="transition" [style.transform]="isCollapsed('recentEvaluations') ? 'rotate(180deg)' : 'rotate(0deg)'">unfold_less</mat-icon>
           </button>
-          <a routerLink="/weekly-evaluation" class="text-sm font-medium text-primary hover:underline">
+          <button mat-button color="primary" routerLink="/weekly-evaluation">
             View All
-          </a>
+          </button>
         </div>
       </div>
+      <mat-divider class="mt-4"></mat-divider>
       <div class="mt-4 space-y-3" *ngIf="!isCollapsed('recentEvaluations')">
-        <div *ngFor="let eval of recentEvaluations()" class="flex items-center gap-4 rounded-xl border bg-background/60 p-3">
-          <img [src]="eval.avatar" [alt]="eval.name" class="size-10 rounded-full object-cover" />
+        <div
+          *ngFor="let eval of recentEvaluations()"
+          class="flex items-center gap-4 rounded-2xl border border-dashed border-muted bg-background/80 p-4 transition hover:border-primary/40 hover:bg-primary/5"
+        >
+          <img [src]="eval.avatar" [alt]="eval.name" class="size-12 rounded-full object-cover shadow-sm" />
           <div class="flex-1">
             <p class="font-semibold text-foreground">{{ eval.name }}</p>
-            <p class="text-sm text-muted-foreground">{{ eval.position }}</p>
+            <p class="text-sm text-muted-foreground">{{ eval.position }} · {{ eval.department }}</p>
           </div>
           <div class="text-right">
-            <p class="font-semibold text-primary">{{ eval.average.toFixed(1) }}/5.0</p>
-            <p class="text-xs text-muted-foreground">{{ eval.date | date: 'shortDate' }}</p>
+            <p class="flex items-center justify-end gap-1 font-semibold text-primary">
+              <mat-icon class="!text-base">star</mat-icon>
+              {{ eval.average.toFixed(1) }}/5
+            </p>
+            <p class="text-xs text-muted-foreground">{{ eval.date | date: 'mediumDate' }}</p>
           </div>
         </div>
         <div *ngIf="recentEvaluations().length === 0" class="py-8 text-center text-sm text-muted-foreground">
           No recent evaluations found.
         </div>
       </div>
-    </article>
+    </mat-card>
 
-    <article class="rounded-2xl border bg-card/80 p-6 shadow-sm">
+    <mat-card class="rounded-2xl border bg-card/95 shadow-sm" [@fadeInUp]>
       <div class="flex items-center justify-between">
         <div>
           <h3 class="text-lg font-semibold tracking-tight">Top Performers</h3>
-          <p class="text-sm text-muted-foreground">Employees and trainees with the highest recent ratings.</p>
+          <p class="text-sm text-muted-foreground">Highest recent average ratings.</p>
         </div>
-        <button type="button" class="rounded-lg border border-input bg-background p-1 text-muted-foreground transition hover:text-foreground" (click)="toggleSection('topPerformers')" [attr.aria-expanded]="!isCollapsed('topPerformers')" title="Collapse">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="size-4 transition-transform" [style.transform]="isCollapsed('topPerformers') ? 'rotate(180deg)' : 'rotate(0deg)'"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <button mat-icon-button (click)="toggleSection('topPerformers')" [attr.aria-expanded]="!isCollapsed('topPerformers')" matTooltip="Collapse">
+          <mat-icon class="transition" [style.transform]="isCollapsed('topPerformers') ? 'rotate(180deg)' : 'rotate(0deg)'">unfold_less</mat-icon>
         </button>
       </div>
+      <mat-divider class="mt-4"></mat-divider>
       <div class="mt-4 space-y-3" *ngIf="!isCollapsed('topPerformers')">
-        <div *ngFor="let performer of topPerformers()" class="flex items-center gap-3 rounded-xl border bg-background/60 p-3">
-          <span class="flex size-10 items-center justify-center rounded-full bg-primary/10 text-lg font-bold text-primary">
+        <div
+          *ngFor="let performer of topPerformers()"
+          class="flex items-center gap-4 rounded-2xl border border-transparent bg-background/80 p-3 transition hover:border-primary/40 hover:bg-primary/5"
+        >
+          <span class="flex size-10 items-center justify-center rounded-full bg-primary/10 text-lg font-bold text-primary shadow-sm">
             {{ performer.rank }}
           </span>
           <div class="flex-1">
@@ -153,7 +206,7 @@
             <p class="text-sm text-muted-foreground">{{ performer.department }}</p>
           </div>
           <div class="text-right">
-            <p class="font-semibold text-primary">{{ performer.average.toFixed(1) }}</p>
+            <p class="text-sm font-semibold text-primary">{{ performer.average.toFixed(1) }}</p>
             <p class="text-xs text-muted-foreground">{{ performer.evaluationCount }} eval{{ performer.evaluationCount !== 1 ? 's' : '' }}</p>
           </div>
         </div>
@@ -161,6 +214,6 @@
           No top performers yet.
         </div>
       </div>
-    </article>
+    </mat-card>
   </section>
 </div>

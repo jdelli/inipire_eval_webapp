@@ -7,6 +7,16 @@ import { Employee, Trainee } from '../models/personnel.model';
 import { forkJoin } from 'rxjs';
 import { StarRatingComponent } from '../components/star-rating/star-rating.component';
 import { PaginatorComponent } from '../components/paginator/paginator.component';
+import { MatCardModule } from '@angular/material/card';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatBadgeModule } from '@angular/material/badge';
 
 type PersonType = 'employee' | 'trainee';
 interface PersonRow {
@@ -29,7 +39,22 @@ interface DepartmentGroupRow {
 @Component({
   selector: 'app-weekly-evaluation',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, StarRatingComponent, PaginatorComponent],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    StarRatingComponent,
+    PaginatorComponent,
+    MatCardModule,
+    MatButtonModule,
+    MatIconModule,
+    MatChipsModule,
+    MatProgressBarModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatTooltipModule,
+    MatDividerModule,
+    MatBadgeModule,
+  ],
   templateUrl: './weekly-evaluation.component.html',
   styles: `
     @keyframes fadeIn {

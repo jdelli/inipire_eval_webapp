@@ -11,6 +11,20 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs';
 import { RoleService } from '../state/role.service';
 import { AuthService } from '../services/auth.service';
+import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatListModule } from '@angular/material/list';
+import { MatRippleModule } from '@angular/material/core';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatBadgeModule } from '@angular/material/badge';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatCardModule } from '@angular/material/card';
+import { animate, style, transition, trigger } from '@angular/animations';
 
 interface NavItem {
   label: string;
@@ -22,9 +36,35 @@ interface NavItem {
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [
+    CommonModule,
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    MatToolbarModule,
+    MatIconModule,
+    MatButtonModule,
+    MatListModule,
+    MatRippleModule,
+    MatTooltipModule,
+    MatBadgeModule,
+    MatDividerModule,
+    MatMenuModule,
+    MatChipsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatCardModule,
+  ],
   templateUrl: './shell.component.html',
   styles: ``,
+  animations: [
+    trigger('navReveal', [
+      transition(':enter', [
+        style({ opacity: 0, transform: 'translateY(8px)' }),
+        animate('180ms ease-out', style({ opacity: 1, transform: 'none' })),
+      ]),
+    ]),
+  ],
 })
 export class ShellComponent {
   private readonly router = inject(Router);
@@ -68,6 +108,14 @@ export class ShellComponent {
       description: 'Team directory organized by department.',
     },
   ];
+
+  private readonly iconMap: Record<NavItem['icon'], string> = {
+    home: 'home',
+    grid: 'dashboard',
+    calendar: 'event',
+    star: 'grade',
+    users: 'group',
+  };
 
   readonly activeNav = signal<NavItem>(this.navItems[0]);
   readonly mobileNavOpen = signal(false);
@@ -152,6 +200,10 @@ export class ShellComponent {
 
   trackByRoute(_: number, item: NavItem): string {
     return item.route;
+  }
+
+  navIcon(icon: NavItem['icon']): string {
+    return this.iconMap[icon] ?? 'dashboard';
   }
 
   private setActiveNav(url: string): void {

@@ -80,3 +80,25 @@
     border-radius: var(--radius);
   }
 }
+
+@layer components {
+  .mat-mdc-toolbar {
+    backdrop-filter: blur(12px);
+    background-color: rgba(255, 255, 255, 0.9) !important;
+  }
+
+  .dark .mat-mdc-toolbar {
+    background-color: rgba(15, 23, 42, 0.85) !important;
+  }
+
+  .mat-mdc-chip.mat-primary.mat-mdc-elevated-chip.mat-mdc-chip-selected,
+  .mat-mdc-chip.mat-primary.mat-mdc-standard-chip.mat-mdc-chip-selected {
+    background-color: rgba(59, 130, 246, 0.12) !important;
+    color: hsl(var(--primary)) !important;
+    font-weight: 600;
+  }
+
+  .mat-mdc-progress-bar .mdc-linear-progress__bar-inner {
+    border-top-width: 4px;
+  }
+}
