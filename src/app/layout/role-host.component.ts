@@ -9,7 +9,7 @@ import { RoleService } from '../state/role.service';
   standalone: true,
   imports: [CommonModule, ShellComponent, EmployeeShellComponent],
   template: `
-    <div class="flex min-h-screen items-center justify-center bg-muted/20" *ngIf="loading(); else layout">
+    <div class="flex min-h-screen items-center justify-center bg-muted/20" *ngIf="loading() || role() === null; else layout">
       <div class="rounded-2xl border border-input bg-background px-6 py-4 text-xs text-muted-foreground shadow-sm">
         Checking your access…
       </div>

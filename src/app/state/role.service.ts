@@ -11,7 +11,7 @@ export class RoleService {
     requireSync: false,
   });
 
-  readonly role = signal<UserRole>('employee');
+  readonly role = signal<UserRole | null>(null);
   readonly department = signal<string | null>(null);
   readonly profile = signal<UserProfile | null>(null);
   readonly loading = signal(true);

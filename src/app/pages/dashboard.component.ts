@@ -64,6 +64,7 @@ export class DashboardComponent {
   private loadCollapsedState(): Record<string, boolean> {
     try {
       const role = this.roleService.role();
+      if (!role) return {};
       const raw = localStorage.getItem(this.storageKey(role));
       if (raw) {
         const parsed = JSON.parse(raw);
@@ -78,6 +79,7 @@ export class DashboardComponent {
   private saveCollapsedState(state: Record<string, boolean>): void {
     try {
       const role = this.roleService.role();
+      if (!role) return;
       localStorage.setItem(this.storageKey(role), JSON.stringify(state));
     } catch {
       // ignore write errors
