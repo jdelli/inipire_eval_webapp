@@ -1,3 +1,4 @@
+@import '@angular/material/prebuilt-themes/indigo-pink.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -72,5 +73,10 @@
   body {
     @apply bg-background text-foreground font-sans;
     font-feature-settings: "liga" 1, "calt" 1;
+  }
+
+  /* Subtle alignment between Angular Material and Tailwind design tokens */
+  .mat-mdc-card {
+    border-radius: var(--radius);
   }
 }

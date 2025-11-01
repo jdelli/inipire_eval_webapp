@@ -84,12 +84,16 @@ export class LoginComponent {
 
   constructor() {
     console.log('[LoginComponent] initialized');
-    this.authService.user$
+    // Route users by role: team leaders -> dashboard, employees -> home
+    this.authService.profile$
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((firebaseUser) => {
-        console.log('[LoginComponent] auth state', firebaseUser?.uid ?? null);
-        if (firebaseUser) {
-          this.router.navigate(['/dashboard']);
+      .subscribe((profile) => {
+        console.log('[LoginComponent] profile state', profile?.uid ?? null, 'TL=', profile?.isTeamleader ?? null);
+        if (profile) {
+          const target = profile.isTeamleader ? '/dashboard' : '/home';
+          if (this.router.url !== target) {
+            this.router.navigate([target]);
+          }
         }
       });
   }
@@ -114,7 +118,7 @@ export class LoginComponent {
     this.authService.login(this.form.getRawValue()).subscribe({
       next: () => {
         this.loading.set(false);
-        this.router.navigate(['/dashboard']);
+        // Navigation happens in the profile$ subscription above once the profile loads.
       },
       error: (err) => {
         console.error('Login error', err);
