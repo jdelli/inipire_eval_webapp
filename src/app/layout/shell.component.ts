@@ -74,8 +74,6 @@ export class ShellComponent {
 
   readonly profile = this.roleService.profile;
   readonly loggingOut = signal(false);
-  // Collapsible sidebar state (desktop only)
-  readonly sidebarCollapsed = signal<boolean>(false);
   readonly navItems: NavItem[] = [
     {
       label: 'Home',
@@ -136,16 +134,6 @@ export class ShellComponent {
   });
 
   constructor() {
-    // Restore persisted sidebar state
-    try {
-      const saved = localStorage.getItem('sidebarCollapsed');
-      if (saved != null) {
-        this.sidebarCollapsed.set(saved === '1' || saved === 'true');
-      }
-    } catch {
-      // ignore
-    }
-
     this.router.events
       .pipe(
         filter((event): event is NavigationEnd => event instanceof NavigationEnd),
@@ -162,21 +150,6 @@ export class ShellComponent {
 
   closeMobileNav(): void {
     this.mobileNavOpen.set(false);
-  }
-
-  toggleSidebar(): void {
-    console.log('toggleSidebar called, current state:', this.sidebarCollapsed());
-    this.sidebarCollapsed.update((v) => {
-      const next = !v;
-      console.log('Toggling from', v, 'to', next);
-      try {
-        localStorage.setItem('sidebarCollapsed', next ? '1' : '0');
-      } catch {
-        // ignore write errors (private mode, etc.)
-      }
-      return next;
-    });
-    console.log('New state:', this.sidebarCollapsed());
   }
 
   logout(): void {

@@ -1,18 +1,12 @@
 <div class="min-h-screen bg-muted/40 text-sm text-foreground antialiased">
   <div class="flex min-h-screen">
     <aside
-      class="hidden flex-col border-r bg-background/95 backdrop-blur transition-[width] duration-200 ease-out lg:flex"
-      [class.w-20]="sidebarCollapsed()"
-      [class.w-72]="!sidebarCollapsed()"
+      class="hidden w-20 flex-col border-r bg-background/95 backdrop-blur lg:flex"
     >
-      <div class="flex items-center gap-3 px-6 py-6" [class.justify-center]="sidebarCollapsed()">
+      <div class="flex items-center justify-center gap-3 px-6 py-6">
         <button mat-icon-button color="primary" class="size-11 rounded-xl bg-primary/10 text-primary">
           <mat-icon>insights</mat-icon>
         </button>
-        <div *ngIf="!sidebarCollapsed()">
-          <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Executive Evaluation</p>
-          <h1 class="text-lg font-semibold text-foreground">Elevate Pulse</h1>
-        </div>
       </div>
 
       <mat-nav-list class="flex-1 px-2">
@@ -23,7 +17,7 @@
             routerLinkActive="is-active"
             [routerLinkActiveOptions]="{ exact: true }"
             (click)="closeMobileNav()"
-            [matTooltip]="sidebarCollapsed() ? item.label : ''"
+            [matTooltip]="item.label"
             matTooltipPosition="right"
             class="mb-1 rounded-xl px-3 py-2 transition-colors duration-150"
             [ngClass]="{
@@ -33,18 +27,7 @@
             [@navReveal]
           >
             <mat-icon matListIcon>{{ navIcon(item.icon) }}</mat-icon>
-            <div matListItemTitle *ngIf="!sidebarCollapsed()" class="flex items-center gap-2">
-              <span class="text-sm font-semibold tracking-tight">{{ item.label }}</span>
-              <span
-                *ngIf="activeNav().route === item.route"
-                class="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary"
-              >
-                Now
-              </span>
-            </div>
-            <div matListItemLine *ngIf="!sidebarCollapsed()" class="max-w-[16rem] text-xs leading-snug text-muted-foreground">
-              {{ item.description }}
-            </div>
+            <span class="sr-only">{{ item.label }}</span>
           </a>
         </ng-container>
       </mat-nav-list>
@@ -56,9 +39,6 @@
     <div class="flex flex-1 flex-col">
       <mat-toolbar class="sticky top-0 z-30 border-b bg-background/90 backdrop-blur" color="transparent">
         <div class="flex items-center gap-2">
-          <button mat-icon-button class="hidden lg:inline-flex" (click)="toggleSidebar()" aria-label="Toggle sidebar">
-            <mat-icon>{{ sidebarCollapsed() ? 'chevron_right' : 'chevron_left' }}</mat-icon>
-          </button>
           <div>
             <p class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Executive workspace</p>
             <h2 class="text-xl font-semibold tracking-tight sm:text-2xl">{{ activeNav().label }}</h2>
