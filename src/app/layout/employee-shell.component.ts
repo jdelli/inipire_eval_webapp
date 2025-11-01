@@ -7,6 +7,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -17,6 +18,7 @@ import {
   IncidentReportPayload,
   ReportingService,
 } from '../services/reporting.service';
+import { DepartmentFeedComponent } from '../pages/department-feed.component';
 
 interface DailyEntry {
   hour: string;
@@ -26,7 +28,7 @@ interface DailyEntry {
 @Component({
   selector: 'app-employee-shell',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterOutlet, RouterLink, RouterLinkActive],
   templateUrl: './employee-shell.component.html',
   styles: ``,
 })
@@ -77,6 +79,12 @@ export class EmployeeShellComponent implements OnInit {
     return Math.round((this.entries().length / total) * 100);
   });
   readonly missingCount = computed(() => this.missingReportAlerts().length);
+
+  // Tabs: 'daily' or 'incident'
+  readonly activeTab = signal<'daily' | 'incident'>('daily');
+  setTab(tab: 'daily' | 'incident') {
+    this.activeTab.set(tab);
+  }
 
   readonly entryForm = this.fb.nonNullable.group({
     hour: this.timeSlots[0],

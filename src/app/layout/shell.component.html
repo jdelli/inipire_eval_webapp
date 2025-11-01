@@ -52,6 +52,17 @@
                 [ngSwitch]="item.icon"
               >
                 <svg
+                  *ngSwitchCase="'home'"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  class="size-4"
+                >
+                  <path d="m3 11 9-7 9 7v9a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1v-5H9v5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <svg
                   *ngSwitchCase="'grid'"
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"

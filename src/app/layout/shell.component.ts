@@ -15,7 +15,7 @@ import { AuthService } from '../services/auth.service';
 interface NavItem {
   label: string;
   route: string;
-  icon: 'grid' | 'calendar' | 'star' | 'users';
+  icon: 'home' | 'grid' | 'calendar' | 'star' | 'users';
   description: string;
 }
 
@@ -37,6 +37,12 @@ export class ShellComponent {
   // Collapsible sidebar state (desktop only)
   readonly sidebarCollapsed = signal<boolean>(false);
   readonly navItems: NavItem[] = [
+    {
+      label: 'Home',
+      route: '/home',
+      icon: 'home',
+      description: 'Department announcements and tasks in one feed.',
+    },
     {
       label: 'Dashboard',
       route: '/dashboard',
@@ -74,6 +80,8 @@ export class ShellComponent {
         return 'Compare leadership impact across dimensions and spot stretch opportunities.';
       case '/personnel':
         return 'View all employees and trainees organized by department.';
+      case '/home':
+        return 'Share wins, tasks, and blockers so the department stays aligned.';
       default:
         return 'Stay ahead of strategic priorities, team health, and executive signals.';
     }
