@@ -37,15 +37,15 @@ import { MatChipsModule } from '@angular/material/chips';
       <div>
         <mat-card-title class="text-xl font-semibold text-foreground">Incident report</mat-card-title>
         <mat-card-subtitle class="text-xs text-muted-foreground">
-          Logged under trainingRecords/{{ traineeRecordId() }}/incedentReports.
+          Logged under {{ employeeSource() }}/{{ employeeId() }}/irReports.
         </mat-card-subtitle>
       </div>
       <div class="ml-auto">
-        <mat-chip color="primary" selected *ngIf="traineeRecordId(); else missingTrainee">
+        <mat-chip color="primary" selected *ngIf="employeeId(); else missingEmployee">
           <mat-icon matChipAvatar>check_circle</mat-icon>
           ID ready
         </mat-chip>
-        <ng-template #missingTrainee>
+        <ng-template #missingEmployee>
           <mat-chip color="warn" selected>
             <mat-icon matChipAvatar>error</mat-icon>
             Missing ID
@@ -116,7 +116,7 @@ import { MatChipsModule } from '@angular/material/chips';
           color="primary"
           type="submit"
           class="w-full lg:col-span-2"
-          [disabled]="incidentSaving() || !traineeRecordId()"
+          [disabled]="incidentSaving() || !employeeId()"
         >
           <ng-container *ngIf="incidentSaving(); else incidentLabel">Submitting...</ng-container>
           <ng-template #incidentLabel>Submit incident</ng-template>
@@ -133,7 +133,16 @@ export class EmployeeIncidentReportComponent {
   private readonly roleService = inject(RoleService);
 
   readonly profile = this.roleService.profile;
-  readonly traineeRecordId = computed(() => this.profile()?.uid ?? '');
+  readonly employeeId = computed(() => {
+    const profile = this.profile();
+    // Use employeeId from profile if available, otherwise fall back to uid
+    return profile?.employeeId ?? profile?.uid ?? '';
+  });
+  readonly employeeSource = computed(() => {
+    const profile = this.profile();
+    // Use employeeSource from profile if available, otherwise default to 'employees'
+    return profile?.employeeSource ?? 'employees';
+  });
   readonly incidentSaving = signal(false);
   readonly incidentError = signal<string | null>(null);
   readonly incidentNotice = signal<string | null>(null);
@@ -151,7 +160,7 @@ export class EmployeeIncidentReportComponent {
   });
 
   submitIncident(): void {
-    if (!this.traineeRecordId()) { this.incidentError.set('No trainee record ID configured.'); return; }
+    if (!this.employeeId()) { this.incidentError.set('No employee ID configured.'); return; }
     if (this.incidentForm.invalid) { this.incidentForm.markAllAsTouched(); this.incidentError.set('Complete all required fields before submitting.'); return; }
 
     const { date, title, severity, status, summary, impact, actions, reportedBy } = this.incidentForm.getRawValue();
@@ -160,7 +169,7 @@ export class EmployeeIncidentReportComponent {
 
     this.incidentSaving.set(true); this.incidentError.set(null); this.incidentNotice.set(null);
 
-    this.reportingService.createIncidentReport(this.traineeRecordId(), {
+    this.reportingService.createIncidentReportFor(this.employeeId(), this.employeeSource(), {
       date: date || this.todayKey,
       title: title!.trim(),
       severity: severity as IncidentReportPayload['severity'],

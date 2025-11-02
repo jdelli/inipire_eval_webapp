@@ -218,9 +218,10 @@ export class ReportingService {
     traineeId: string,
     payload: IncidentReportPayload
   ): Observable<string> {
+    // Use irReports for consistency (instead of incedentReports typo)
     const incidentsRef = collection(
       this.firestore,
-      `trainingRecords/${traineeId}/incedentReports`
+      `trainingRecords/${traineeId}/irReports`
     );
     const now = Timestamp.now();
 
