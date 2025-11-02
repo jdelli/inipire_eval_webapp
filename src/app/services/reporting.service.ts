@@ -54,11 +54,12 @@ export class ReportingService {
 
   getDailyReport(
     employeeId: string,
-    dateKey: string
+    dateKey: string,
+    source: 'employees' | 'trainingRecords' = 'employees'
   ): Observable<DailyReportRecord | null> {
     const reportDoc = doc(
       this.firestore,
-      `employees/${employeeId}/dailyReport/${dateKey}`
+      `${source}/${employeeId}/dailyReports/${dateKey}`
     );
 
     return from(
@@ -84,11 +85,12 @@ export class ReportingService {
 
   saveDailyReport(
     employeeId: string,
-    payload: SaveDailyReportPayload
+    payload: SaveDailyReportPayload,
+    source: 'employees' | 'trainingRecords' = 'employees'
   ): Observable<void> {
     const reportDoc = doc(
       this.firestore,
-      `employees/${employeeId}/dailyReport/${payload.date}`
+      `${source}/${employeeId}/dailyReports/${payload.date}`
     );
 
     return from(
@@ -117,9 +119,10 @@ export class ReportingService {
   getMissingDailyReportDates(
     employeeId: string,
     lookbackDays: number,
-    options: { excludeWeekends?: boolean } = {}
+    options: { excludeWeekends?: boolean; source?: 'employees' | 'trainingRecords' } = {}
   ): Observable<string[]> {
     const excludeWeekends = options.excludeWeekends ?? true;
+    const source = options.source ?? 'employees';
     const targetDates = this.buildLookbackDates(lookbackDays, excludeWeekends);
 
     if (!targetDates.length) {
@@ -131,7 +134,7 @@ export class ReportingService {
 
     const reportsRef = collection(
       this.firestore,
-      `employees/${employeeId}/dailyReport`
+      `${source}/${employeeId}/dailyReports`
     );
     const q = query(
       reportsRef,

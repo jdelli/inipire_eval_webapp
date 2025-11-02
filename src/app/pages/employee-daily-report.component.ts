@@ -191,7 +191,16 @@ export class EmployeeDailyReportComponent implements OnInit {
   private readonly roleService = inject(RoleService);
 
   readonly profile = this.roleService.profile;
-  readonly employeeId = computed(() => this.profile()?.uid ?? '');
+  readonly employeeId = computed(() => {
+    const profile = this.profile();
+    // Use employeeId from profile if available, otherwise fall back to uid
+    return profile?.employeeId ?? profile?.uid ?? '';
+  });
+  readonly employeeSource = computed(() => {
+    const profile = this.profile();
+    // Use employeeSource from profile if available, otherwise default to 'employees'
+    return profile?.employeeSource ?? 'employees';
+  });
   readonly todayKey = toDateKey(new Date());
   readonly todayLabel = formatDateLabel(this.todayKey);
 
@@ -224,7 +233,7 @@ export class EmployeeDailyReportComponent implements OnInit {
   loadDailyReport(): void {
     if (!this.employeeId()) { this.dailyReportError.set('No employee ID configured.'); return; }
     this.dailyReportLoading.set(true); this.dailyReportError.set(null);
-    this.reportingService.getDailyReport(this.employeeId(), this.todayKey).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.reportingService.getDailyReport(this.employeeId(), this.todayKey, this.employeeSource()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (record) => {
         if (record) {
           const entries = sortEntries(record.entries ?? []); this.entries.set(entries);
@@ -239,7 +248,7 @@ export class EmployeeDailyReportComponent implements OnInit {
 
   refreshMissingDailyReportAlerts(): void {
     if (!this.employeeId()) { this.missingReportAlerts.set([]); return; }
-    this.reportingService.getMissingDailyReportDates(this.employeeId(), 5).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.reportingService.getMissingDailyReportDates(this.employeeId(), 5, { source: this.employeeSource() }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (dates) => { const friendly = dates.map(formatDateLabel); this.missingReportAlerts.set(friendly); },
       error: () => {},
     });
@@ -251,7 +260,7 @@ export class EmployeeDailyReportComponent implements OnInit {
     const meta = this.dailyMetaForm.getRawValue();
     this.dailyReportSaving.set(true); this.dailyReportError.set(null); this.dailyReportNotice.set(null);
     const payload: SaveDailyReportPayload = { date: this.todayKey, entries, submittedBy: this.profile()?.fullName ?? null, notes: meta.notes?.trim() ? meta.notes.trim() : null, complete: !!meta.complete };
-    this.reportingService.saveDailyReport(this.employeeId(), payload).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.reportingService.saveDailyReport(this.employeeId(), payload, this.employeeSource()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => { this.dailyReportSaving.set(false); this.dailyReportNotice.set('Daily report saved.'); this.lastDailyReportSavedAt.set(new Date()); this.refreshMissingDailyReportAlerts(); },
       error: () => { this.dailyReportSaving.set(false); this.dailyReportError.set('Failed to save daily report. Try again.'); },
     });

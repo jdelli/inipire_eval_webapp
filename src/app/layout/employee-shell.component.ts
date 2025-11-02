@@ -71,7 +71,16 @@ export class EmployeeShellComponent implements OnInit {
 
   readonly profile = this.roleService.profile;
   readonly loggingOut = signal(false);
-  readonly employeeId = computed(() => this.profile()?.uid ?? '');
+  readonly employeeId = computed(() => {
+    const profile = this.profile();
+    // Use employeeId from profile if available, otherwise fall back to uid
+    return profile?.employeeId ?? profile?.uid ?? '';
+  });
+  readonly employeeSource = computed(() => {
+    const profile = this.profile();
+    // Use employeeSource from profile if available, otherwise default to 'employees'
+    return profile?.employeeSource ?? 'employees';
+  });
   readonly todayKey = toDateKey(new Date());
   readonly todayLabel = formatDateLabel(this.todayKey);
   readonly timeSlots: string[] = [
@@ -202,7 +211,7 @@ export class EmployeeShellComponent implements OnInit {
     this.dailyError.set(null);
 
     this.reportingService
-      .getDailyReport(this.employeeId(), this.todayKey)
+      .getDailyReport(this.employeeId(), this.todayKey, this.employeeSource())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (record) => {
@@ -228,7 +237,7 @@ export class EmployeeShellComponent implements OnInit {
     }
 
     this.reportingService
-      .getMissingDailyReportDates(this.employeeId(), 5)
+      .getMissingDailyReportDates(this.employeeId(), 5, { source: this.employeeSource() })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (dates) => {
