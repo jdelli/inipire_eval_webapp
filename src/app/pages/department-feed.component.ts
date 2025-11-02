@@ -15,6 +15,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatListModule } from '@angular/material/list';
+import { MatMenuModule } from '@angular/material/menu';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { catchError, of, switchMap, tap, map } from 'rxjs';
 import { DepartmentFeedService, DepartmentPost, DepartmentPostType } from '../services/department-feed.service';
@@ -67,6 +68,13 @@ export class DepartmentFeedComponent {
     { id: '1', name: 'Bill Gates', title: 'Breakthrough Energy', badge: 'in' },
     { id: '2', name: 'Sundar Pichai', title: 'CEO at Google', badge: 'in' },
     { id: '3', name: 'Matt Watson', title: 'Founder & CTO', badge: 'in' },
+  ]);
+
+  readonly trendingTopics = signal<
+    Array<{ topic: string; postCount: string }>
+  >([
+    { topic: '#ProductLaunch', postCount: '1,200 posts' },
+    { topic: '#Q4Goals', postCount: '800 posts' },
   ]);
 
   readonly postForm = this.fb.group({
