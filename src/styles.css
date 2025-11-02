@@ -105,4 +105,21 @@
   .mat-mdc-progress-bar .mdc-linear-progress__bar-inner {
     border-top-width: 4px;
   }
+
+  /* Fix: remove stray 1px divider line that can appear inside Material form fields
+     (caused by the subscript wrapper's top border). */
+  .mat-mdc-form-field-subscript-wrapper {
+    border-top: 0 !important;
+  }
+
+  /* Enhance input/textarea placeholder contrast a bit for readability */
+  .mat-mdc-text-field-wrapper .mdc-text-field__input::placeholder {
+    color: hsl(var(--muted-foreground));
+    opacity: 0.9;
+  }
+
+  /* Make outlined fields match app radius token */
+  .mdc-text-field--outlined {
+    --mdc-outlined-text-field-container-shape: var(--radius);
+  }
 }

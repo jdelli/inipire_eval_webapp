@@ -321,26 +321,27 @@ export class WeeklyEvaluationComponent {
 
   loadPersonnel(): void {
     this.loading.set(true);
-    console.log('🔄 Weekly Evaluation: Starting to load personnel...');
-    forkJoin({
-      employees: this.personnelService.getEmployees(),
-      trainees: this.personnelService.getTrainees(),
-    }).subscribe({
-      next: ({ employees, trainees }) => {
-        console.log('✅ Weekly Evaluation: Data loaded', {
+    console.log('🔄 Weekly Evaluation: Starting to load personnel from TLtraineeUsers...');
+
+    // Fetch users with accounts from TLtraineeUsers collection
+    this.personnelService.getTeamMembersWithAccounts().subscribe({
+      next: (members) => {
+        console.log('✅ Weekly Evaluation: Team members loaded', {
+          totalCount: members.length,
+        });
+        console.log('📊 Sample member:', members[0]);
+
+        // Separate into employees and trainees based on source
+        const employees = members.filter((m: any) => m.source === 'employees') as any[];
+        const trainees = members.filter((m: any) => m.source === 'trainingRecords') as any[];
+
+        console.log('📊 Separated:', {
           employeeCount: employees.length,
           traineeCount: trainees.length,
         });
-        console.log('📊 Sample employee:', employees[0]);
-        console.log('📊 Sample trainee:', trainees[0]);
-        const dedupedEmployees = this.dedupeByKey(employees, (e) => e.id);
-        const dedupedTrainees = this.dedupeByKey(trainees, (t) => t.id);
-        console.log('After deduplication:', {
-          employeeCount: dedupedEmployees.length,
-          traineeCount: dedupedTrainees.length,
-        });
-        this.employees.set(dedupedEmployees);
-        this.trainees.set(dedupedTrainees);
+
+        this.employees.set(employees as Employee[]);
+        this.trainees.set(trainees as Trainee[]);
         this.loading.set(false);
       },
       error: (err) => {

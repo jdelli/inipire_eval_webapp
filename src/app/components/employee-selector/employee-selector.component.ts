@@ -3,6 +3,7 @@ import { Component, Output, EventEmitter, OnInit, signal, inject, computed, isDe
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { PersonnelService } from '../../services/personnel.service';
+import { RoleService } from '../../state/role.service';
 import { combineLatest, startWith } from 'rxjs';
 
 export interface SelectedEmployee {
@@ -55,6 +56,7 @@ export class EmployeeSelectorComponent implements OnInit {
   @Output() employeeSelected = new EventEmitter<SelectedEmployee | null>();
 
   private readonly personnelService = inject(PersonnelService);
+  private readonly roleService = inject(RoleService);
 
   readonly searchControl = new FormControl('');
   // Bridge reactive forms to signals so filtering updates as the user types
@@ -65,6 +67,10 @@ export class EmployeeSelectorComponent implements OnInit {
   readonly isDropdownOpen = signal(false);
   readonly selectedId = signal<string>('');
   readonly selectedName = signal<string>('');
+
+  // Get current user's profile to check if they're a team leader
+  readonly profile = this.roleService.profile;
+  readonly role = this.roleService.role;
 
   // Canonical lists with duplicates collapsed by name+department+email, prefer latest updatedAt/createdAt
   readonly canonicalEmployees = computed(() => this.dedupeByIdentity(this.allEmployees()));
@@ -112,19 +118,24 @@ export class EmployeeSelectorComponent implements OnInit {
   private fetchAllPersonnel(): void {
     this.loading.set(true);
 
-    // Pass null companyId to intentionally disable company filter and fetch all
-    combineLatest({
-      employees: this.personnelService.getEmployeesCanonical(null),
-      trainees: this.personnelService.getTraineesCanonical(null),
-    }).subscribe({
-      next: ({ employees, trainees }) => {
-        this.allEmployees.set(employees);
-        this.allTrainees.set(trainees);
+    // Fetch users with accounts from TLtraineeUsers (for team leaders)
+    // This ensures we only show employees/trainees who have user accounts
+    this.personnelService.getTeamMembersWithAccounts().subscribe({
+      next: (members) => {
+        // Separate into employees and trainees based on source
+        const employees = members.filter((m: any) => m.source === 'employees');
+        const trainees = members.filter((m: any) => m.source === 'trainingRecords');
+
+        this.allEmployees.set(employees as any[]);
+        this.allTrainees.set(trainees as any[]);
         this.loading.set(false);
 
-        console.log('[EmployeeSelector] Loaded:', {
+        console.log('[EmployeeSelector] Loaded from TLtraineeUsers:', {
+          totalMembers: members.length,
           employees: employees.length,
           trainees: trainees.length,
+          userRole: this.role(),
+          userDepartment: this.profile()?.department,
         });
 
         // Initial pass to surface any obvious duplicates in dev

@@ -11,6 +11,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from '@angular/material/input';
 import { MatTableModule } from '@angular/material/table';
+import { TextFieldModule } from '@angular/cdk/text-field';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -38,7 +39,8 @@ interface DailyEntry { hour: string; activity: string; }
     MatCheckboxModule,
     MatDividerModule,
     MatExpansionModule,
-    MatDialogModule,
+  MatDialogModule,
+  TextFieldModule,
   ],
   template: `
   <section *ngIf="missingReportAlerts().length" class="mb-6">
@@ -99,6 +101,9 @@ interface DailyEntry { hour: string; activity: string; }
               matInput
               formControlName="activity"
               rows="2"
+              cdkTextareaAutosize
+              cdkAutosizeMinRows="2"
+              cdkAutosizeMaxRows="6"
               placeholder="Draft release notes, resolved customer escalations, paired with QA..."
             ></textarea>
           </mat-form-field>
@@ -164,7 +169,15 @@ interface DailyEntry { hour: string; activity: string; }
                 <form class="space-y-3" [formGroup]="dailyMetaForm" (ngSubmit)="saveDailyReport()">
                   <mat-form-field appearance="outline" class="w-full">
                     <mat-label>Notes for your lead</mat-label>
-                    <textarea matInput formControlName="notes" rows="3" placeholder="Highlights, blockers, or reminders..."></textarea>
+                    <textarea
+                      matInput
+                      formControlName="notes"
+                      rows="3"
+                      cdkTextareaAutosize
+                      cdkAutosizeMinRows="3"
+                      cdkAutosizeMaxRows="8"
+                      placeholder="Highlights, blockers, or reminders..."
+                    ></textarea>
                   </mat-form-field>
 
                   <mat-checkbox formControlName="complete">
@@ -479,6 +492,7 @@ export class EmployeeDailyReportComponent implements OnInit {
     MatTableModule,
     MatCheckboxModule,
     MatIconModule,
+    TextFieldModule,
   ],
   template: `
     <h2 mat-dialog-title>Edit Report for {{ formatDate(data.report.date) }}</h2>
@@ -498,6 +512,9 @@ export class EmployeeDailyReportComponent implements OnInit {
               matInput
               formControlName="activity"
               rows="2"
+              cdkTextareaAutosize
+              cdkAutosizeMinRows="2"
+              cdkAutosizeMaxRows="6"
               placeholder="What did you work on?"
             ></textarea>
           </mat-form-field>
@@ -543,7 +560,15 @@ export class EmployeeDailyReportComponent implements OnInit {
 
         <mat-form-field appearance="outline" class="w-full">
           <mat-label>Notes</mat-label>
-          <textarea matInput formControlName="notes" rows="3" placeholder="Notes for your lead..."></textarea>
+          <textarea
+            matInput
+            formControlName="notes"
+            rows="3"
+            cdkTextareaAutosize
+            cdkAutosizeMinRows="3"
+            cdkAutosizeMaxRows="8"
+            placeholder="Notes for your lead..."
+          ></textarea>
         </mat-form-field>
 
         <mat-checkbox formControlName="complete">Mark as complete</mat-checkbox>

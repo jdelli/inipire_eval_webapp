@@ -139,21 +139,29 @@ export class DashboardComponent {
 
   loadData(): void {
     this.loading.set(true);
-    console.log('🔄 Dashboard: Starting to load data...');
-    forkJoin({
-      employees: this.personnelService.getEmployees(),
-      trainees: this.personnelService.getTrainees(),
-    }).subscribe({
-      next: ({ employees, trainees }) => {
-        console.log('✅ Dashboard: Personnel loaded', {
+    console.log('🔄 Dashboard: Starting to load data from TLtraineeUsers...');
+
+    // Fetch users with accounts from TLtraineeUsers collection
+    this.personnelService.getTeamMembersWithAccounts().subscribe({
+      next: (members) => {
+        console.log('✅ Dashboard: Team members loaded', {
+          totalCount: members.length,
+        });
+
+        // Separate into employees and trainees based on source
+        const employees = members.filter((m: any) => m.source === 'employees') as any[];
+        const trainees = members.filter((m: any) => m.source === 'trainingRecords') as any[];
+
+        console.log('✅ Dashboard: Personnel separated', {
           employeeCount: employees.length,
           traineeCount: trainees.length,
         });
-        this.employees.set(employees);
-        this.trainees.set(trainees);
-        
+
+        this.employees.set(employees as Employee[]);
+        this.trainees.set(trainees as Trainee[]);
+
         // Load evaluations for all employees and trainees
-        this.loadAllEvaluations(employees, trainees);
+        this.loadAllEvaluations(employees as Employee[], trainees as Trainee[]);
       },
       error: (err) => {
         console.error('❌ Dashboard: Error loading data:', err);
