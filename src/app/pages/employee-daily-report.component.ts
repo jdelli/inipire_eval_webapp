@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ReportingService, DailyReportEntry, SaveDailyReportPayload } from '../services/reporting.service';
+import { ReportingService, DailyReportEntry, DailyReportRecord, SaveDailyReportPayload } from '../services/reporting.service';
 import { RoleService } from '../state/role.service';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -15,6 +15,8 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatDialog, MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 
 interface DailyEntry { hour: string; activity: string; }
 
@@ -35,6 +37,8 @@ interface DailyEntry { hour: string; activity: string; }
     MatProgressBarModule,
     MatCheckboxModule,
     MatDividerModule,
+    MatExpansionModule,
+    MatDialogModule,
   ],
   template: `
   <section *ngIf="missingReportAlerts().length" class="mb-6">
@@ -179,6 +183,76 @@ interface DailyEntry { hour: string; activity: string; }
             </mat-card>
           </div>
         </div>
+
+        <mat-divider class="my-8"></mat-divider>
+
+        <section>
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h2 class="text-lg font-semibold text-foreground">Past daily reports</h2>
+            <span class="text-xs text-muted-foreground">Sorted by most recent date</span>
+          </div>
+
+          <div *ngIf="pastReportsLoading()" class="mt-4 rounded-2xl border border-dashed border-input bg-background/80 px-6 py-10 text-center text-sm text-muted-foreground">
+            Loading recent reports...
+          </div>
+
+          <div *ngIf="pastReportsError()" class="mt-4 rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {{ pastReportsError() }}
+          </div>
+
+          <ng-container *ngIf="!pastReportsLoading() && !pastReportsError()">
+            <ng-container *ngIf="pastReports().length; else noPastReports">
+              <mat-accordion class="mt-4" multi>
+                <mat-expansion-panel *ngFor="let report of pastReports(); trackBy: trackReport">
+                  <mat-expansion-panel-header>
+                    <mat-panel-title>
+                      {{ formatDate(report.date) }}
+                    </mat-panel-title>
+                    <mat-panel-description>
+                      {{ report.entries.length }} hour{{ report.entries.length === 1 ? '' : 's' }} logged
+                    </mat-panel-description>
+                  </mat-expansion-panel-header>
+
+                  <div class="space-y-4 py-2 text-sm text-muted-foreground">
+                    <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                      <div>
+                        <span>Submitted by: <span class="font-medium text-foreground">{{ report.submittedBy || 'Unknown' }}</span></span>
+                        <span class="ml-3">Marked complete: <span class="font-medium text-foreground">{{ report.complete ? 'Yes' : 'No' }}</span></span>
+                      </div>
+                      <button mat-stroked-button color="primary" (click)="editPastReport(report)">
+                        <mat-icon class="mr-1">edit</mat-icon>
+                        Edit Report
+                      </button>
+                    </div>
+                    <p *ngIf="report.notes" class="rounded-xl border border-input bg-background/70 px-4 py-3 text-sm text-foreground">{{ report.notes }}</p>
+
+                    <div class="overflow-hidden rounded-2xl border border-input bg-background/70">
+                      <table class="w-full text-xs">
+                        <thead>
+                          <tr class="bg-muted/40 text-[11px] uppercase tracking-wide text-muted-foreground">
+                            <th class="px-4 py-2 text-left">Hour</th>
+                            <th class="px-4 py-2 text-left">Summary</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr *ngFor="let entry of report.entries" class="border-t border-border text-foreground">
+                            <td class="px-4 py-2 font-semibold">{{ entry.hour }}</td>
+                            <td class="px-4 py-2 text-muted-foreground">{{ entry.activity }}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </mat-expansion-panel>
+              </mat-accordion>
+            </ng-container>
+            <ng-template #noPastReports>
+              <div class="mt-4 rounded-2xl border border-dashed border-input bg-background/80 px-6 py-10 text-center text-sm text-muted-foreground">
+                No past reports found yet.
+              </div>
+            </ng-template>
+          </ng-container>
+        </section>
       </ng-container>
     </mat-card-content>
   </mat-card>
@@ -189,17 +263,23 @@ export class EmployeeDailyReportComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly reportingService = inject(ReportingService);
   private readonly roleService = inject(RoleService);
+  private readonly dialog = inject(MatDialog);
+  private readonly recentReportsLimit = 7;
 
   readonly profile = this.roleService.profile;
   readonly employeeId = computed(() => {
     const profile = this.profile();
     // Use employeeId from profile if available, otherwise fall back to uid
-    return profile?.employeeId ?? profile?.uid ?? '';
+    const id = profile?.employeeId ?? profile?.uid ?? '';
+    console.log('[EmployeeDailyReport] computed employeeId', { profile, id });
+    return id;
   });
   readonly employeeSource = computed(() => {
     const profile = this.profile();
     // Use employeeSource from profile if available, otherwise default to 'employees'
-    return profile?.employeeSource ?? 'employees';
+    const source = profile?.employeeSource ?? 'employees';
+    console.log('[EmployeeDailyReport] computed employeeSource', { profile, source });
+    return source;
   });
   readonly todayKey = toDateKey(new Date());
   readonly todayLabel = formatDateLabel(this.todayKey);
@@ -213,6 +293,9 @@ export class EmployeeDailyReportComponent implements OnInit {
   readonly dailyReportNotice = signal<string | null>(null);
   readonly lastDailyReportSavedAt = signal<Date | null>(null);
   readonly missingReportAlerts = signal<string[]>([]);
+  readonly pastReports = signal<DailyReportRecord[]>([]);
+  readonly pastReportsLoading = signal(false);
+  readonly pastReportsError = signal<string | null>(null);
 
   readonly displayedColumns = ['hour', 'activity', 'actions'];
 
@@ -225,15 +308,41 @@ export class EmployeeDailyReportComponent implements OnInit {
   readonly entryForm = this.fb.nonNullable.group({ hour: this.timeSlots[0], activity: '' });
   readonly dailyMetaForm = this.fb.nonNullable.group({ notes: '', complete: true });
 
-  ngOnInit(): void {
-    if (this.employeeId()) { this.loadDailyReport(); this.refreshMissingDailyReportAlerts(); }
-    else { this.dailyReportError.set('No employee ID configured.'); }
+  constructor() {
+    effect(
+      () => {
+        const id = this.employeeId();
+        const source = this.employeeSource();
+        const profile = this.profile();
+
+        console.log('[EmployeeDailyReport] effect triggered', { id, source, profile });
+
+        if (!id) {
+          this.dailyReportError.set('No employee ID configured.');
+          this.entries.set([]);
+          this.pastReports.set([]);
+          this.pastReportsLoading.set(false);
+          return;
+        }
+
+        this.dailyReportError.set(null);
+        console.log('[EmployeeDailyReport] loading data for', { id, source });
+        this.loadDailyReport(id, source);
+        this.refreshMissingDailyReportAlerts(id, source);
+        this.loadPastReports(id, source);
+      },
+      { allowSignalWrites: true }
+    );
   }
 
-  loadDailyReport(): void {
-    if (!this.employeeId()) { this.dailyReportError.set('No employee ID configured.'); return; }
+  ngOnInit(): void {}
+
+  loadDailyReport(employeeId?: string, source?: 'employees' | 'trainingRecords'): void {
+    const targetId = employeeId ?? this.employeeId();
+    const targetSource = source ?? this.employeeSource();
+    if (!targetId) { this.dailyReportError.set('No employee ID configured.'); return; }
     this.dailyReportLoading.set(true); this.dailyReportError.set(null);
-    this.reportingService.getDailyReport(this.employeeId(), this.todayKey, this.employeeSource()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.reportingService.getDailyReport(targetId, this.todayKey, targetSource).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (record) => {
         if (record) {
           const entries = sortEntries(record.entries ?? []); this.entries.set(entries);
@@ -246,12 +355,44 @@ export class EmployeeDailyReportComponent implements OnInit {
     });
   }
 
-  refreshMissingDailyReportAlerts(): void {
-    if (!this.employeeId()) { this.missingReportAlerts.set([]); return; }
-    this.reportingService.getMissingDailyReportDates(this.employeeId(), 5, { source: this.employeeSource() }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+  refreshMissingDailyReportAlerts(employeeId?: string, source?: 'employees' | 'trainingRecords'): void {
+    const targetId = employeeId ?? this.employeeId();
+    const targetSource = source ?? this.employeeSource();
+    if (!targetId) { this.missingReportAlerts.set([]); return; }
+    this.reportingService.getMissingDailyReportDates(targetId, 5, { source: targetSource }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (dates) => { const friendly = dates.map(formatDateLabel); this.missingReportAlerts.set(friendly); },
       error: () => {},
     });
+  }
+
+  loadPastReports(employeeId?: string, source?: 'employees' | 'trainingRecords'): void {
+    const targetId = employeeId ?? this.employeeId();
+    const targetSource = source ?? this.employeeSource();
+    console.log('[EmployeeDailyReport] loadPastReports', { targetId, targetSource });
+    if (!targetId) { this.pastReports.set([]); this.pastReportsLoading.set(false); return; }
+
+    this.pastReportsLoading.set(true); this.pastReportsError.set(null);
+    this.reportingService
+      .getRecentDailyReports(targetId, { limit: this.recentReportsLimit, source: targetSource })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (records) => {
+          console.log('[EmployeeDailyReport] received records', records);
+          // Filter out today's report since it's shown in the main section
+          // Comment out the filter temporarily to see all reports including today
+          const sanitized = records
+            // .filter((record) => record.date !== this.todayKey)  // Uncomment to hide today's report
+            .map((record) => ({ ...record, entries: sortEntries(record.entries ?? []) }));
+          console.log('[EmployeeDailyReport] sanitized records', sanitized);
+          this.pastReports.set(sanitized);
+          this.pastReportsLoading.set(false);
+        },
+        error: (err) => {
+          console.error('[EmployeeDailyReport] error loading past reports', err);
+          this.pastReportsLoading.set(false);
+          this.pastReportsError.set('Unable to load past daily reports.');
+        },
+      });
   }
 
   saveDailyReport(): void {
@@ -261,7 +402,7 @@ export class EmployeeDailyReportComponent implements OnInit {
     this.dailyReportSaving.set(true); this.dailyReportError.set(null); this.dailyReportNotice.set(null);
     const payload: SaveDailyReportPayload = { date: this.todayKey, entries, submittedBy: this.profile()?.fullName ?? null, notes: meta.notes?.trim() ? meta.notes.trim() : null, complete: !!meta.complete };
     this.reportingService.saveDailyReport(this.employeeId(), payload, this.employeeSource()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: () => { this.dailyReportSaving.set(false); this.dailyReportNotice.set('Daily report saved.'); this.lastDailyReportSavedAt.set(new Date()); this.refreshMissingDailyReportAlerts(); },
+  next: () => { this.dailyReportSaving.set(false); this.dailyReportNotice.set('Daily report saved.'); this.lastDailyReportSavedAt.set(new Date()); this.refreshMissingDailyReportAlerts(); this.loadPastReports(); },
       error: () => { this.dailyReportSaving.set(false); this.dailyReportError.set('Failed to save daily report. Try again.'); },
     });
   }
@@ -277,6 +418,206 @@ export class EmployeeDailyReportComponent implements OnInit {
   editEntry(entry: DailyEntry): void { this.editingHour.set(entry.hour); this.entryForm.setValue({ hour: entry.hour, activity: entry.activity }); }
   removeEntry(hour: string): void { this.entries.update((items) => items.filter((item) => item.hour !== hour)); if (this.editingHour() === hour) this.resetForm(); }
   resetForm(): void { this.editingHour.set(null); this.entryForm.setValue({ hour: this.timeSlots[0], activity: '' }); }
+
+  trackReport(_index: number, report: DailyReportRecord): string { return report.id; }
+  formatDate(dateKey: string): string { return formatDateLabel(dateKey); }
+
+  editPastReport(report: DailyReportRecord): void {
+    const dialogRef = this.dialog.open(EditPastReportDialog, {
+      width: '800px',
+      maxWidth: '95vw',
+      data: {
+        report,
+        timeSlots: this.timeSlots,
+      },
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result) {
+        this.savePastReport(result);
+      }
+    });
+  }
+
+  savePastReport(updatedReport: DailyReportRecord): void {
+    const payload: SaveDailyReportPayload = {
+      date: updatedReport.date,
+      entries: sortEntries(updatedReport.entries),
+      submittedBy: this.profile()?.fullName ?? null,
+      notes: updatedReport.notes,
+      complete: updatedReport.complete,
+    };
+
+    this.reportingService
+      .saveDailyReport(this.employeeId(), payload, this.employeeSource())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.dailyReportNotice.set('Past report updated successfully.');
+          this.loadPastReports();
+          setTimeout(() => this.dailyReportNotice.set(null), 3000);
+        },
+        error: () => {
+          this.dailyReportError.set('Failed to update past report.');
+        },
+      });
+  }
+}
+
+// Dialog component for editing past reports
+@Component({
+  selector: 'edit-past-report-dialog',
+  standalone: true,
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatSelectModule,
+    MatInputModule,
+    MatTableModule,
+    MatCheckboxModule,
+    MatIconModule,
+  ],
+  template: `
+    <h2 mat-dialog-title>Edit Report for {{ formatDate(data.report.date) }}</h2>
+    <mat-dialog-content class="max-h-[70vh]">
+      <form [formGroup]="editForm" class="space-y-4">
+        <div class="grid gap-4 md:grid-cols-[minmax(0,200px)_1fr_auto]">
+          <mat-form-field appearance="outline">
+            <mat-label>Hour</mat-label>
+            <mat-select formControlName="hour">
+              <mat-option *ngFor="let slot of data.timeSlots" [value]="slot">{{ slot }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Activity</mat-label>
+            <textarea
+              matInput
+              formControlName="activity"
+              rows="2"
+              placeholder="What did you work on?"
+            ></textarea>
+          </mat-form-field>
+
+          <div class="flex items-end">
+            <button mat-flat-button color="primary" type="button" (click)="addOrUpdateEntry()">
+              {{ editingHour ? 'Update' : 'Add' }}
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-hidden rounded-2xl border border-input bg-background/80">
+          <table mat-table [dataSource]="entries" class="w-full text-sm" *ngIf="entries.length; else noEntries">
+            <ng-container matColumnDef="hour">
+              <th mat-header-cell *matHeaderCellDef class="px-4 py-3 text-left text-xs font-semibold">Hour</th>
+              <td mat-cell *matCellDef="let entry" class="px-4 py-3 font-semibold">{{ entry.hour }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="activity">
+              <th mat-header-cell *matHeaderCellDef class="px-4 py-3 text-left text-xs font-semibold">Summary</th>
+              <td mat-cell *matCellDef="let entry" class="px-4 py-3 text-sm">{{ entry.activity }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef class="px-4 py-3 text-right text-xs font-semibold">Actions</th>
+              <td mat-cell *matCellDef="let entry" class="px-4 py-3 text-right">
+                <button mat-icon-button color="primary" (click)="editEntry(entry)">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button mat-icon-button color="warn" (click)="removeEntry(entry.hour)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+          </table>
+          <ng-template #noEntries>
+            <div class="px-6 py-10 text-center text-sm text-muted-foreground">No entries yet.</div>
+          </ng-template>
+        </div>
+
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Notes</mat-label>
+          <textarea matInput formControlName="notes" rows="3" placeholder="Notes for your lead..."></textarea>
+        </mat-form-field>
+
+        <mat-checkbox formControlName="complete">Mark as complete</mat-checkbox>
+      </form>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button (click)="cancel()">Cancel</button>
+      <button mat-flat-button color="primary" (click)="save()" [disabled]="!entries.length">Save Changes</button>
+    </mat-dialog-actions>
+  `,
+})
+export class EditPastReportDialog {
+  readonly data = inject<{ report: DailyReportRecord; timeSlots: string[] }>(MAT_DIALOG_DATA);
+  private readonly dialogRef = inject(MatDialogRef<EditPastReportDialog>);
+  private readonly fb = inject(FormBuilder);
+
+  entries: DailyEntry[] = [...this.data.report.entries];
+  editingHour: string | null = null;
+  displayedColumns = ['hour', 'activity', 'actions'];
+
+  editForm = this.fb.nonNullable.group({
+    hour: [this.data.timeSlots[0]],
+    activity: [''],
+    notes: [this.data.report.notes ?? ''],
+    complete: [this.data.report.complete],
+  });
+
+  formatDate(dateKey: string): string {
+    return formatDateLabel(dateKey);
+  }
+
+  addOrUpdateEntry(): void {
+    const { hour, activity } = this.editForm.getRawValue();
+    const trimmed = activity.trim();
+    if (!trimmed) return;
+
+    const originalHour = this.editingHour;
+    const nextEntry: DailyEntry = { hour, activity: trimmed };
+
+    this.entries = this.entries
+      .filter((item) => item.hour !== nextEntry.hour && item.hour !== originalHour)
+      .concat(nextEntry)
+      .sort((a, b) => a.hour.localeCompare(b.hour));
+
+    this.editingHour = null;
+    this.editForm.patchValue({ hour: this.data.timeSlots[0], activity: '' });
+  }
+
+  editEntry(entry: DailyEntry): void {
+    this.editingHour = entry.hour;
+    this.editForm.patchValue({ hour: entry.hour, activity: entry.activity });
+  }
+
+  removeEntry(hour: string): void {
+    this.entries = this.entries.filter((item) => item.hour !== hour);
+    if (this.editingHour === hour) {
+      this.editingHour = null;
+      this.editForm.patchValue({ hour: this.data.timeSlots[0], activity: '' });
+    }
+  }
+
+  save(): void {
+    const { notes, complete } = this.editForm.getRawValue();
+    this.dialogRef.close({
+      ...this.data.report,
+      entries: this.entries,
+      notes: notes?.trim() || null,
+      complete,
+    });
+  }
+
+  cancel(): void {
+    this.dialogRef.close();
+  }
 }
 
 function toDateKey(date: Date): string { return date.toISOString().slice(0, 10); }

@@ -7,6 +7,8 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
+  orderBy,
   query,
   setDoc,
   where,
@@ -57,19 +59,23 @@ export class ReportingService {
     dateKey: string,
     source: 'employees' | 'trainingRecords' = 'employees'
   ): Observable<DailyReportRecord | null> {
+    const docPath = `${source}/${employeeId}/dailyReports/${dateKey}`;
+    console.log('[ReportingService] getDailyReport', { employeeId, dateKey, source, docPath });
+    
     const reportDoc = doc(
       this.firestore,
-      `${source}/${employeeId}/dailyReports/${dateKey}`
+      docPath
     );
 
     return from(
       getDoc(reportDoc).then((snapshot) => {
+        console.log('[ReportingService] getDailyReport result', { exists: snapshot.exists(), id: snapshot.id });
         if (!snapshot.exists()) {
           return null;
         }
 
         const data = snapshot.data() as any;
-        return {
+        const result = {
           id: snapshot.id,
           date: data.date ?? snapshot.id,
           entries: Array.isArray(data.entries) ? data.entries : [],
@@ -79,6 +85,8 @@ export class ReportingService {
           createdAt: this.toDate(data.createdAt),
           updatedAt: this.toDate(data.updatedAt),
         } as DailyReportRecord;
+        console.log('[ReportingService] getDailyReport returning', result);
+        return result;
       })
     );
   }
@@ -113,6 +121,54 @@ export class ReportingService {
 
         await setDoc(reportDoc, data, { merge: true });
       })()
+    );
+  }
+
+  getRecentDailyReports(
+    employeeId: string,
+    options: { limit?: number; source?: 'employees' | 'trainingRecords' } = {}
+  ): Observable<DailyReportRecord[]> {
+    const source = options.source ?? 'employees';
+    const maxResults = options.limit ?? 10;
+
+    const collectionPath = `${source}/${employeeId}/dailyReports`;
+    console.log('[ReportingService] getRecentDailyReports', { employeeId, source, collectionPath, maxResults });
+
+    const reportsRef = collection(
+      this.firestore,
+      collectionPath
+    );
+    const reportsQuery = query(
+      reportsRef,
+      orderBy('date', 'desc'),
+      limit(maxResults)
+    );
+
+    return from(
+      getDocs(reportsQuery).then((snapshot) => {
+        console.log('[ReportingService] getDocs completed', { size: snapshot.size, empty: snapshot.empty });
+        const results = snapshot.docs.map((docSnap) => {
+          const data = docSnap.data() as any;
+          const date = data.date ?? docSnap.id;
+          console.log('[ReportingService] doc', { id: docSnap.id, date, entriesCount: data.entries?.length });
+
+          return {
+            id: docSnap.id,
+            date,
+            entries: Array.isArray(data.entries) ? data.entries : [],
+            submittedBy: data.submittedBy ?? null,
+            notes: data.notes ?? null,
+            complete: !!data.complete,
+            createdAt: this.toDate(data.createdAt),
+            updatedAt: this.toDate(data.updatedAt),
+          } as DailyReportRecord;
+        });
+        console.log('[ReportingService] returning results', results);
+        return results;
+      }).catch((error) => {
+        console.error('[ReportingService] getDocs error', error);
+        throw error;
+      })
     );
   }
 
