@@ -1,0 +1,508 @@
+// Enhanced Daily Report Component Styles
+
+// Remove prefix/suffix divider lines in Material form fields
+::ng-deep {
+  .mat-mdc-form-field-icon-prefix,
+  .mat-mdc-form-field-icon-suffix {
+    & + .mat-mdc-form-field-infix {
+      border-left: none !important;
+    }
+  }
+  
+  .mat-mdc-form-field-icon-prefix {
+    border-right: none !important;
+  }
+  
+  .mat-mdc-form-field-icon-suffix {
+    border-left: none !important;
+  }
+  
+  // Remove all internal dividers in form fields
+  .mat-mdc-select,
+  .mat-mdc-text-field-wrapper {
+    .mat-mdc-form-field-flex {
+      .mat-mdc-form-field-icon-prefix::after,
+      .mat-mdc-form-field-icon-suffix::before {
+        display: none !important;
+      }
+    }
+  }
+}
+
+.daily-report-container {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0;
+}
+
+// Alert banner with icon
+.alert-banner {
+  animation: slideInDown 0.4s ease-out;
+  border-left: 4px solid var(--mdc-theme-primary, #3f51b5);
+  
+  mat-icon {
+    animation: pulse 2s infinite;
+  }
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+// Main card
+.main-card {
+  width: 100%;
+  transition: box-shadow 0.3s ease;
+  overflow: hidden;
+  
+  &:hover {
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+  }
+}
+
+// Header section
+.card-header-custom {
+  padding: 2rem 2rem 1.5rem;
+  background: linear-gradient(135deg, rgba(63, 81, 181, 0.05) 0%, rgba(63, 81, 181, 0.02) 100%);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  
+  @media (max-width: 768px) {
+    padding: 1.5rem 1rem 1rem;
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+  
+  .avatar-icon {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+  
+  .header-actions {
+    @media (max-width: 768px) {
+      margin-left: 0 !important;
+      margin-top: 1rem;
+      width: 100%;
+      justify-content: flex-start;
+    }
+  }
+}
+
+// Message banners
+.message-banner {
+  animation: fadeInScale 0.3s ease-out;
+  
+  &.error {
+    background: linear-gradient(135deg, rgba(244, 67, 54, 0.1) 0%, rgba(244, 67, 54, 0.05) 100%);
+    border-left: 4px solid #f44336;
+  }
+  
+  &.success {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
+    border-left: 4px solid #10b981;
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+// Entry form
+.entry-form {
+  padding: 1.5rem 0;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 16px;
+  transition: background 0.3s ease;
+  width: 100%;
+  
+  @media (max-width: 768px) {
+    padding: 1rem 0;
+    gap: 1rem;
+  }
+  
+  &:focus-within {
+    background: rgba(255, 255, 255, 0.8);
+  }
+  
+  .form-field-wrapper {
+    width: 100%;
+  }
+  
+  mat-form-field {
+    transition: transform 0.2s ease;
+    width: 100%;
+    
+    &:focus-within {
+      transform: translateY(-2px);
+    }
+  }
+  
+  button[type="submit"] {
+    min-height: 56px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    
+    @media (max-width: 1024px) {
+      width: 100%;
+    }
+    
+    &:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(63, 81, 181, 0.3);
+    }
+    
+    &:active:not(:disabled) {
+      transform: translateY(0);
+    }
+  }
+}
+
+// Table styling
+.entries-table-container {
+  animation: fadeIn 0.4s ease-out;
+  transition: all 0.3s ease;
+  
+  table {
+    background: transparent;
+    
+    th {
+      background: rgba(63, 81, 181, 0.08);
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    
+    tr {
+      transition: background-color 0.2s ease, transform 0.2s ease;
+      
+      &:hover {
+        background-color: rgba(63, 81, 181, 0.04);
+        transform: translateX(4px);
+      }
+    }
+    
+    td {
+      border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    }
+    
+    button {
+      transition: all 0.2s ease;
+      
+      &:hover {
+        transform: scale(1.05);
+      }
+    }
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+// Empty state
+.empty-state {
+  animation: fadeIn 0.5s ease-out;
+  background: linear-gradient(135deg, rgba(156, 163, 175, 0.05) 0%, rgba(156, 163, 175, 0.02) 100%);
+  
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    opacity: 0.3;
+    margin-bottom: 0.5rem;
+  }
+}
+
+// Sidebar cards
+.sidebar-section {
+  .stat-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-radius: 16px;
+    overflow: hidden;
+    
+    &:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    }
+    
+    mat-progress-bar {
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+      
+      ::ng-deep .mdc-linear-progress__bar-inner {
+        border-radius: 4px;
+      }
+    }
+    
+    mat-chip {
+      animation: bounceIn 0.5s ease-out;
+    }
+  }
+  
+  .notes-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-radius: 16px;
+    
+    &:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    }
+    
+    form {
+      mat-checkbox {
+        transition: transform 0.2s ease;
+        
+        &:hover {
+          transform: translateX(4px);
+        }
+      }
+      
+      button[type="submit"] {
+        font-weight: 600;
+        transition: all 0.3s ease;
+        
+        &:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(63, 81, 181, 0.3);
+        }
+        
+        &:disabled {
+          opacity: 0.6;
+        }
+      }
+    }
+  }
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+// Past reports section
+.past-reports-section {
+  margin-top: 3rem;
+  
+  .section-header {
+    padding: 1rem 0;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid rgba(63, 81, 181, 0.1);
+  }
+  
+  mat-accordion {
+    mat-expansion-panel {
+      margin-bottom: 1rem;
+      border-radius: 12px !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      transition: all 0.3s ease;
+      
+      &:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        transform: translateY(-2px);
+      }
+      
+      mat-expansion-panel-header {
+        padding: 1.5rem;
+        
+        &:hover {
+          background: rgba(63, 81, 181, 0.04);
+        }
+        
+        mat-panel-title {
+          font-weight: 600;
+          font-size: 1rem;
+        }
+        
+        mat-panel-description {
+          color: rgba(0, 0, 0, 0.6);
+        }
+      }
+      
+      .panel-content {
+        padding: 1.5rem;
+        animation: fadeIn 0.3s ease-out;
+        
+        .report-meta {
+          padding: 1rem;
+          background: rgba(63, 81, 181, 0.04);
+          border-radius: 8px;
+          margin-bottom: 1rem;
+        }
+        
+        .report-notes {
+          background: linear-gradient(135deg, rgba(63, 81, 181, 0.05) 0%, rgba(63, 81, 181, 0.02) 100%);
+          border-left: 4px solid #3f51b5;
+        }
+        
+        .entries-table-small {
+          table {
+            tbody tr {
+              transition: background-color 0.2s ease;
+              
+              &:hover {
+                background-color: rgba(63, 81, 181, 0.04);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Loading states
+.loading-state {
+  animation: fadeIn 0.3s ease-out;
+  
+  mat-spinner {
+    margin: 0 auto;
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 1024px) {
+  .daily-report-container {
+    .content-grid {
+      grid-template-columns: 1fr !important;
+      
+      .sidebar-section {
+        .stat-card,
+        .notes-card {
+          max-width: 600px;
+          margin: 0 auto 1rem;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .entry-form {
+    grid-template-columns: 1fr !important;
+    
+    button[type="submit"] {
+      width: 100%;
+      margin-top: 0.5rem;
+    }
+  }
+  
+  .entries-table-container {
+    overflow-x: auto;
+    
+    table {
+      min-width: 600px;
+    }
+  }
+}
+
+// Dialog styling
+.edit-dialog {
+  .dialog-content {
+    padding: 1.5rem;
+    
+    .entry-form-dialog {
+      margin-bottom: 1.5rem;
+    }
+  }
+}
+
+// Custom form field styling
+.form-field-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.notes-textarea-wrapper {
+  margin-bottom: 0.75rem;
+}
+
+.notes-textarea-custom {
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+  line-height: 1.5;
+  
+  &:hover {
+    border-color: hsl(var(--primary) / 0.5);
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: hsl(var(--muted));
+  }
+}
+
+.custom-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+  cursor: pointer;
+  min-height: 42px;
+  
+  &:hover {
+    border-color: hsl(var(--primary) / 0.5);
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: hsl(var(--muted));
+  }
+}
+
+// Utility classes
+.fade-enter {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.slide-enter {
+  animation: slideInDown 0.3s ease-out;
+}
+
+.scale-enter {
+  animation: fadeInScale 0.3s ease-out;
+}

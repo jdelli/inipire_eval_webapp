@@ -28,6 +28,48 @@ import { MatChipsModule } from '@angular/material/chips';
     MatDividerModule,
     MatChipsModule,
   ],
+  styles: [`
+    .form-field-wrapper {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .notes-textarea-custom {
+      resize: vertical;
+      min-height: 80px;
+      font-family: inherit;
+      line-height: 1.5;
+    }
+
+    .notes-textarea-custom:hover,
+    .custom-input:hover,
+    .custom-select:hover {
+      border-color: hsl(var(--primary) / 0.5);
+    }
+
+    .notes-textarea-custom:disabled,
+    .custom-input:disabled,
+    .custom-select:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      background-color: hsl(var(--muted));
+    }
+
+    .custom-select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.5rem center;
+      background-size: 1.5em 1.5em;
+      padding-right: 2.5rem;
+      cursor: pointer;
+      min-height: 42px;
+    }
+
+    .custom-input {
+      min-height: 42px;
+    }
+  `],
   template: `
   <mat-card class="w-full rounded-3xl bg-card/95 shadow-lg">
     <mat-card-header class="items-start gap-4">
@@ -64,52 +106,87 @@ import { MatChipsModule } from '@angular/material/chips';
 
       <form class="grid gap-5 px-6 pb-2 lg:grid-cols-2" [formGroup]="incidentForm" (ngSubmit)="submitIncident()">
         <div class="grid gap-4 lg:col-span-2 lg:grid-cols-4">
-          <mat-form-field appearance="outline">
-            <mat-label>Date</mat-label>
-            <input matInput type="date" formControlName="date" />
-          </mat-form-field>
-          <mat-form-field appearance="outline" class="lg:col-span-1">
-            <mat-label>Severity</mat-label>
-            <mat-select formControlName="severity">
-              <mat-option value="low">Low</mat-option>
-              <mat-option value="medium">Medium</mat-option>
-              <mat-option value="high">High</mat-option>
-              <mat-option value="critical">Critical</mat-option>
-            </mat-select>
-          </mat-form-field>
-          <mat-form-field appearance="outline" class="lg:col-span-1">
-            <mat-label>Status</mat-label>
-            <mat-select formControlName="status">
-              <mat-option value="Open">Open</mat-option>
-              <mat-option value="Monitoring">Monitoring</mat-option>
-              <mat-option value="Resolved">Resolved</mat-option>
-            </mat-select>
-          </mat-form-field>
-          <mat-form-field appearance="outline" class="lg:col-span-1">
-            <mat-label>Reported by</mat-label>
-            <input matInput type="text" formControlName="reportedBy" placeholder="Name submitting the report" />
-          </mat-form-field>
+          <div class="form-field-wrapper">
+            <label class="text-xs font-medium text-muted-foreground mb-1 block">Date</label>
+            <input
+              type="date"
+              formControlName="date"
+              class="custom-input w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            />
+          </div>
+          <div class="form-field-wrapper lg:col-span-1">
+            <label class="text-xs font-medium text-muted-foreground mb-1 block">Severity</label>
+            <select
+              formControlName="severity"
+              class="custom-select w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            >
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="critical">Critical</option>
+            </select>
+          </div>
+          <div class="form-field-wrapper lg:col-span-1">
+            <label class="text-xs font-medium text-muted-foreground mb-1 block">Status</label>
+            <select
+              formControlName="status"
+              class="custom-select w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            >
+              <option value="Open">Open</option>
+              <option value="Monitoring">Monitoring</option>
+              <option value="Resolved">Resolved</option>
+            </select>
+          </div>
+          <div class="form-field-wrapper lg:col-span-1">
+            <label class="text-xs font-medium text-muted-foreground mb-1 block">Reported by</label>
+            <input
+              type="text"
+              formControlName="reportedBy"
+              placeholder="Name submitting the report"
+              class="custom-input w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            />
+          </div>
         </div>
 
-        <mat-form-field appearance="outline" class="lg:col-span-2">
-          <mat-label>Title</mat-label>
-          <input matInput type="text" formControlName="title" placeholder="Short summary" />
-        </mat-form-field>
+        <div class="form-field-wrapper lg:col-span-2">
+          <label class="text-xs font-medium text-muted-foreground mb-1 block">Title</label>
+          <input
+            type="text"
+            formControlName="title"
+            placeholder="Short summary"
+            class="custom-input w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+          />
+        </div>
 
-        <mat-form-field appearance="outline" class="lg:col-span-2">
-          <mat-label>Summary</mat-label>
-          <textarea matInput formControlName="summary" rows="3" placeholder="What happened?"></textarea>
-        </mat-form-field>
+        <div class="form-field-wrapper lg:col-span-2">
+          <label class="text-xs font-medium text-muted-foreground mb-1 block">Summary</label>
+          <textarea
+            formControlName="summary"
+            rows="3"
+            placeholder="What happened?"
+            class="notes-textarea-custom w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+          ></textarea>
+        </div>
 
-        <mat-form-field appearance="outline" class="lg:col-span-2">
-          <mat-label>Impact</mat-label>
-          <textarea matInput formControlName="impact" rows="3" placeholder="Customer, operational, or trainee impact"></textarea>
-        </mat-form-field>
+        <div class="form-field-wrapper lg:col-span-2">
+          <label class="text-xs font-medium text-muted-foreground mb-1 block">Impact</label>
+          <textarea
+            formControlName="impact"
+            rows="3"
+            placeholder="Customer, operational, or trainee impact"
+            class="notes-textarea-custom w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+          ></textarea>
+        </div>
 
-        <mat-form-field appearance="outline" class="lg:col-span-2">
-          <mat-label>Follow-up actions</mat-label>
-          <textarea matInput formControlName="actions" rows="4" placeholder="One action per line"></textarea>
-        </mat-form-field>
+        <div class="form-field-wrapper lg:col-span-2">
+          <label class="text-xs font-medium text-muted-foreground mb-1 block">Follow-up actions</label>
+          <textarea
+            formControlName="actions"
+            rows="4"
+            placeholder="One action per line"
+            class="notes-textarea-custom w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+          ></textarea>
+        </div>
 
         <button
           mat-flat-button

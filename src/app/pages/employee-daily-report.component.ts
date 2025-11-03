@@ -18,6 +18,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatDialog, MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 interface DailyEntry { hour: string; activity: string; }
 
@@ -39,86 +40,115 @@ interface DailyEntry { hour: string; activity: string; }
     MatCheckboxModule,
     MatDividerModule,
     MatExpansionModule,
-  MatDialogModule,
-  TextFieldModule,
+    MatDialogModule,
+    MatTooltipModule,
+    TextFieldModule,
   ],
+  styleUrls: ['./employee-daily-report.component.scss'],
   template: `
-  <section *ngIf="missingReportAlerts().length" class="mb-6">
-    <mat-card class="border border-amber-300/60 bg-amber-50 text-amber-800">
-      <mat-card-content class="flex items-start gap-3 text-sm">
-        <mat-icon color="warn">campaign</mat-icon>
-        <div>
-          <p class="text-xs font-semibold uppercase tracking-wide">Daily report reminder</p>
-          <p class="mt-1 text-xs">
-            No submission logged for
-            <span class="font-semibold">{{ missingReportAlerts().join(', ') }}</span>.
-          </p>
-        </div>
-      </mat-card-content>
-    </mat-card>
-  </section>
-
-  <mat-card class="rounded-3xl bg-card/95 shadow-lg">
-    <mat-card-header class="gap-3">
-      <div mat-card-avatar class="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-        <mat-icon>schedule</mat-icon>
-      </div>
-      <div>
-        <mat-card-title class="text-xl font-semibold">Daily report for {{ todayLabel }}</mat-card-title>
-        <mat-card-subtitle>Capture each hour and send updates straight to your lead.</mat-card-subtitle>
-      </div>
-      <div class="ml-auto flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-        <span *ngIf="lastDailyReportSavedAt()">Saved {{ lastDailyReportSavedAt() | date: 'shortTime' }}</span>
-        <button mat-stroked-button color="primary" type="button" (click)="resetForm()">Reset hour form</button>
-        <button mat-stroked-button type="button" (click)="clearEntries()">Clear entries</button>
-      </div>
-    </mat-card-header>
-
-    <mat-divider></mat-divider>
-
-    <mat-card-content class="px-6 py-6">
-      <div *ngIf="dailyReportError()" class="mb-4 rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">{{ dailyReportError() }}</div>
-      <div *ngIf="dailyReportNotice()" class="mb-4 rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-600">{{ dailyReportNotice() }}</div>
-
-      <div *ngIf="dailyReportLoading()" class="rounded-2xl border border-dashed border-input bg-background/80 px-6 py-10 text-center text-sm text-muted-foreground">Loading today's log...</div>
-
-      <ng-container *ngIf="!dailyReportLoading()">
-        <form
-          class="grid gap-4 md:grid-cols-[minmax(0,200px)_1fr_auto]"
-          [formGroup]="entryForm"
-          (ngSubmit)="submitEntry()"
-        >
-          <mat-form-field appearance="outline">
-            <mat-label>Hour</mat-label>
-            <mat-select formControlName="hour">
-              <mat-option *ngFor="let slot of timeSlots" [value]="slot">{{ slot }}</mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>What did you work on?</mat-label>
-            <textarea
-              matInput
-              formControlName="activity"
-              rows="2"
-              cdkTextareaAutosize
-              cdkAutosizeMinRows="2"
-              cdkAutosizeMaxRows="6"
-              placeholder="Draft release notes, resolved customer escalations, paired with QA..."
-            ></textarea>
-          </mat-form-field>
-
-          <div class="flex items-end justify-end">
-            <button mat-flat-button color="primary" type="submit">
-              {{ editingHour() ? 'Update hour' : 'Add hour' }}
-            </button>
-          </div>
-        </form>
-
-        <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)]">
+  <div class="daily-report-container">
+    <!-- Missing Reports Alert -->
+    <section *ngIf="missingReportAlerts().length" class="mb-6 alert-banner">
+      <mat-card class="border border-amber-300/60 bg-amber-50 text-amber-800">
+        <mat-card-content class="flex items-start gap-3 text-sm">
+          <mat-icon color="warn">campaign</mat-icon>
           <div>
-            <div *ngIf="entries().length; else emptyEntries" class="overflow-hidden rounded-2xl border border-input bg-background/80">
-              <table mat-table [dataSource]="entries()" class="w-full text-sm">
+            <p class="text-xs font-semibold uppercase tracking-wide">Daily report reminder</p>
+            <p class="mt-1 text-xs">
+              No submission logged for
+              <span class="font-semibold">{{ missingReportAlerts().join(', ') }}</span>.
+            </p>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </section>
+
+    <!-- Main Card -->
+  <mat-card class="main-card rounded-3xl bg-card/95 shadow-lg">
+      <mat-card-header class="card-header-custom gap-3">
+        <div mat-card-avatar class="avatar-icon flex size-10 items-center justify-center rounded-xl text-white">
+          <mat-icon>schedule</mat-icon>
+        </div>
+        <div>
+          <mat-card-title class="text-xl font-semibold">Daily report for {{ todayLabel }}</mat-card-title>
+          <mat-card-subtitle>Capture each hour and send updates straight to your lead.</mat-card-subtitle>
+        </div>
+        <div class="header-actions ml-auto flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span *ngIf="lastDailyReportSavedAt()">Saved {{ lastDailyReportSavedAt() | date: 'shortTime' }}</span>
+          <button mat-stroked-button color="primary" type="button" (click)="resetForm()">
+            <mat-icon class="mr-1">refresh</mat-icon>
+            Reset
+          </button>
+          <button mat-stroked-button type="button" (click)="clearEntries()">
+            <mat-icon class="mr-1">clear_all</mat-icon>
+            Clear
+          </button>
+        </div>
+      </mat-card-header>
+
+      <mat-divider></mat-divider>
+
+  <mat-card-content class="px-0 py-6">
+        <!-- Error Message -->
+        <div *ngIf="dailyReportError()" class="message-banner error mb-4 rounded-xl px-4 py-3 text-sm flex items-start gap-2">
+          <mat-icon class="text-red-600">error_outline</mat-icon>
+          <span>{{ dailyReportError() }}</span>
+        </div>
+        
+        <!-- Success Message -->
+        <div *ngIf="dailyReportNotice()" class="message-banner success mb-4 rounded-xl px-4 py-3 text-sm flex items-start gap-2">
+          <mat-icon class="text-green-600">check_circle_outline</mat-icon>
+          <span>{{ dailyReportNotice() }}</span>
+        </div>
+
+        <!-- Loading State -->
+        <div *ngIf="dailyReportLoading()" class="loading-state rounded-2xl border border-dashed border-input bg-background/80 px-6 py-10 text-center text-sm text-muted-foreground">
+          <mat-icon class="mb-2">hourglass_empty</mat-icon>
+          <p>Loading today's log...</p>
+        </div>
+
+        <ng-container *ngIf="!dailyReportLoading()">
+          <!-- Entry Form -->
+          <form
+            class="entry-form grid gap-4 grid-cols-1 md:grid-cols-[minmax(0,180px)_1fr] lg:grid-cols-[minmax(0,200px)_1fr_auto]"
+            [formGroup]="entryForm"
+            (ngSubmit)="submitEntry()"
+          >
+            <div class="form-field-wrapper">
+              <label class="text-xs font-medium text-muted-foreground mb-1 block">Hour</label>
+              <select
+                class="custom-select w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                formControlName="hour"
+              >
+                <option *ngFor="let slot of timeSlots" [value]="slot">{{ slot }}</option>
+              </select>
+            </div>
+
+            <div class="form-field-wrapper">
+              <label class="text-xs font-medium text-muted-foreground mb-1 block">What did you work on?</label>
+              <textarea
+                class="notes-textarea-custom w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                formControlName="activity"
+                rows="2"
+                placeholder="Draft release notes, resolved customer escalations, paired with QA..."
+              ></textarea>
+              <span class="text-[11px] text-muted-foreground mt-1 block">Be specific about your accomplishments</span>
+            </div>
+
+            <div class="flex items-end justify-end md:col-span-2 lg:col-span-1">
+              <button mat-flat-button color="primary" type="submit" class="w-full lg:w-auto" [disabled]="!entryForm.get('activity')?.value?.trim()">
+                <mat-icon class="mr-1">{{ editingHour() ? 'edit' : 'add' }}</mat-icon>
+                {{ editingHour() ? 'Update' : 'Add Entry' }}
+              </button>
+            </div>
+          </form>
+
+          <!-- Content Grid -->
+          <div class="content-grid mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)]">
+            <!-- Entries Table Section -->
+            <div>
+              <div *ngIf="entries().length; else emptyEntries" class="entries-table-container overflow-hidden rounded-2xl border border-input bg-background/80">
+                <table mat-table [dataSource]="entries()" class="w-full text-sm">
                 <ng-container matColumnDef="hour">
                   <th mat-header-cell *matHeaderCellDef class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Hour</th>
                   <td mat-cell *matCellDef="let entry" class="px-4 py-3 font-semibold text-foreground">{{ entry.hour }}</td>
@@ -132,143 +162,203 @@ interface DailyEntry { hour: string; activity: string; }
                 <ng-container matColumnDef="actions">
                   <th mat-header-cell *matHeaderCellDef class="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Actions</th>
                   <td mat-cell *matCellDef="let entry" class="px-4 py-3 text-right">
-                    <button mat-stroked-button color="primary" type="button" class="mr-2 text-xs" (click)="editEntry(entry)">Edit</button>
-                    <button mat-stroked-button color="warn" type="button" class="text-xs" (click)="removeEntry(entry.hour)">Remove</button>
+                    <button mat-icon-button color="primary" type="button" (click)="editEntry(entry)" matTooltip="Edit entry">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button mat-icon-button color="warn" type="button" (click)="removeEntry(entry.hour)" matTooltip="Remove entry">
+                      <mat-icon>delete</mat-icon>
+                    </button>
                   </td>
                 </ng-container>
 
                 <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
                 <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
               </table>
-            </div>
-            <ng-template #emptyEntries>
-              <div class="rounded-2xl border border-dashed border-input bg-background/80 px-6 py-10 text-center text-sm text-muted-foreground">
-                No entries yet. Add what you accomplished this hour so your lead sees steady progress.
               </div>
-            </ng-template>
-          </div>
-
-          <div class="space-y-4">
-            <mat-card class="border border-input bg-background/70">
-              <mat-card-content>
-                <div class="flex items-center justify-between text-xs text-muted-foreground">
-                  <span class="font-semibold text-foreground">Hours logged</span>
-                  <span>{{ hoursLogged() }} / {{ timeSlots.length }}</span>
+              <ng-template #emptyEntries>
+                <div class="empty-state rounded-2xl border border-dashed border-input bg-background/80 px-6 py-10 text-center text-sm text-muted-foreground">
+                  <mat-icon>event_note</mat-icon>
+                  <p class="font-medium">No entries yet</p>
+                  <p class="mt-1 text-xs">Add what you accomplished this hour so your lead sees steady progress.</p>
                 </div>
-                <mat-progress-bar class="mt-3 rounded-full" mode="determinate" [value]="completionPercent()"></mat-progress-bar>
-                <p class="mt-2 text-xs text-muted-foreground">{{ completionPercent() }}% of day captured</p>
-                <mat-chip *ngIf="missingCount()" color="warn" selected class="mt-3">
-                  <mat-icon matChipAvatar>priority_high</mat-icon>
-                  {{ missingCount() }} previous day(s) missing
-                </mat-chip>
-              </mat-card-content>
-            </mat-card>
+              </ng-template>
+            </div>
 
-            <mat-card class="border border-input bg-background/70">
-              <mat-card-content>
-                <form class="space-y-3" [formGroup]="dailyMetaForm" (ngSubmit)="saveDailyReport()">
-                  <mat-form-field appearance="outline" class="w-full">
-                    <mat-label>Notes for your lead</mat-label>
-                    <textarea
-                      matInput
-                      formControlName="notes"
-                      rows="3"
-                      cdkTextareaAutosize
-                      cdkAutosizeMinRows="3"
-                      cdkAutosizeMaxRows="8"
-                      placeholder="Highlights, blockers, or reminders..."
-                    ></textarea>
-                  </mat-form-field>
-
-                  <mat-checkbox formControlName="complete">
-                    Mark day complete
-                  </mat-checkbox>
-                  <p class="-mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                    Uncheck if you plan to add more context later today.
-                  </p>
-
-                  <button mat-flat-button color="primary" type="submit" class="w-full" [disabled]="dailyReportSaving()">
-                    <ng-container *ngIf="dailyReportSaving(); else saveLabel">Saving...</ng-container>
-                    <ng-template #saveLabel>Save daily report</ng-template>
-                  </button>
-                </form>
-              </mat-card-content>
-            </mat-card>
-          </div>
-        </div>
-
-        <mat-divider class="my-8"></mat-divider>
-
-        <section>
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <h2 class="text-lg font-semibold text-foreground">Past daily reports</h2>
-            <span class="text-xs text-muted-foreground">Sorted by most recent date</span>
-          </div>
-
-          <div *ngIf="pastReportsLoading()" class="mt-4 rounded-2xl border border-dashed border-input bg-background/80 px-6 py-10 text-center text-sm text-muted-foreground">
-            Loading recent reports...
-          </div>
-
-          <div *ngIf="pastReportsError()" class="mt-4 rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            {{ pastReportsError() }}
-          </div>
-
-          <ng-container *ngIf="!pastReportsLoading() && !pastReportsError()">
-            <ng-container *ngIf="pastReports().length; else noPastReports">
-              <mat-accordion class="mt-4" multi>
-                <mat-expansion-panel *ngFor="let report of pastReports(); trackBy: trackReport">
-                  <mat-expansion-panel-header>
-                    <mat-panel-title>
-                      {{ formatDate(report.date) }}
-                    </mat-panel-title>
-                    <mat-panel-description>
-                      {{ report.entries.length }} hour{{ report.entries.length === 1 ? '' : 's' }} logged
-                    </mat-panel-description>
-                  </mat-expansion-panel-header>
-
-                  <div class="space-y-4 py-2 text-sm text-muted-foreground">
-                    <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                      <div>
-                        <span>Submitted by: <span class="font-medium text-foreground">{{ report.submittedBy || 'Unknown' }}</span></span>
-                        <span class="ml-3">Marked complete: <span class="font-medium text-foreground">{{ report.complete ? 'Yes' : 'No' }}</span></span>
-                      </div>
-                      <button mat-stroked-button color="primary" (click)="editPastReport(report)">
-                        <mat-icon class="mr-1">edit</mat-icon>
-                        Edit Report
-                      </button>
+            <!-- Sidebar Section -->
+            <div class="sidebar-section space-y-4">
+              <!-- Progress Card -->
+              <mat-card class="stat-card border border-input bg-background/70">
+                <mat-card-content>
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                      <mat-icon class="text-primary">assessment</mat-icon>
+                      <span class="font-semibold text-foreground">Progress</span>
                     </div>
-                    <p *ngIf="report.notes" class="rounded-xl border border-input bg-background/70 px-4 py-3 text-sm text-foreground">{{ report.notes }}</p>
-
-                    <div class="overflow-hidden rounded-2xl border border-input bg-background/70">
-                      <table class="w-full text-xs">
-                        <thead>
-                          <tr class="bg-muted/40 text-[11px] uppercase tracking-wide text-muted-foreground">
-                            <th class="px-4 py-2 text-left">Hour</th>
-                            <th class="px-4 py-2 text-left">Summary</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr *ngFor="let entry of report.entries" class="border-t border-border text-foreground">
-                            <td class="px-4 py-2 font-semibold">{{ entry.hour }}</td>
-                            <td class="px-4 py-2 text-muted-foreground">{{ entry.activity }}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
+                    <span class="text-xs text-muted-foreground">{{ hoursLogged() }} / {{ timeSlots.length }}</span>
                   </div>
-                </mat-expansion-panel>
-              </mat-accordion>
-            </ng-container>
-            <ng-template #noPastReports>
-              <div class="mt-4 rounded-2xl border border-dashed border-input bg-background/80 px-6 py-10 text-center text-sm text-muted-foreground">
-                No past reports found yet.
+                  <mat-progress-bar class="mt-3 rounded-full" mode="determinate" [value]="completionPercent()" color="primary"></mat-progress-bar>
+                  <p class="mt-2 text-xs text-muted-foreground">{{ completionPercent() }}% of day captured</p>
+                  <mat-chip *ngIf="missingCount()" color="warn" selected class="mt-3">
+                    <mat-icon matChipAvatar>priority_high</mat-icon>
+                    {{ missingCount() }} previous day(s) missing
+                  </mat-chip>
+                </mat-card-content>
+              </mat-card>
+
+              <!-- Notes & Submit Card -->
+              <mat-card class="notes-card border border-input bg-background/70">
+                <mat-card-content>
+                  <div class="flex items-center gap-2 mb-3">
+                    <mat-icon class="text-primary">note_add</mat-icon>
+                    <span class="font-semibold text-foreground">Submit Report</span>
+                  </div>
+                  <form class="space-y-3" [formGroup]="dailyMetaForm" (ngSubmit)="saveDailyReport()">
+                    <div class="notes-textarea-wrapper">
+                      <label class="text-xs font-medium text-muted-foreground mb-1 block">Notes for your lead</label>
+                      <textarea
+                        class="notes-textarea-custom w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                        formControlName="notes"
+                        rows="3"
+                        placeholder="Highlights, blockers, or reminders..."
+                      ></textarea>
+                      <span class="text-[11px] text-muted-foreground mt-1 block">Optional context for your manager</span>
+                    </div>
+
+                    <mat-checkbox formControlName="complete">
+                      <span class="font-medium">Mark day complete</span>
+                    </mat-checkbox>
+                    <p class="-mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                      Uncheck if you plan to add more context later today.
+                    </p>
+
+                    <button mat-flat-button color="primary" type="submit" class="w-full" [disabled]="dailyReportSaving() || !entries().length">
+                      <mat-icon class="mr-1">{{ dailyReportSaving() ? 'hourglass_empty' : 'save' }}</mat-icon>
+                      <ng-container *ngIf="dailyReportSaving(); else saveLabel">Saving...</ng-container>
+                      <ng-template #saveLabel>Save Daily Report</ng-template>
+                    </button>
+                  </form>
+                </mat-card-content>
+              </mat-card>
+            </div>
+          </div>
+
+          <mat-divider class="my-8"></mat-divider>
+
+          <!-- Past Reports Section -->
+          <section class="past-reports-section">
+            <div class="section-header flex flex-wrap items-center justify-between gap-3">
+              <div class="flex items-center gap-2">
+                <mat-icon class="text-primary">history</mat-icon>
+                <h2 class="text-lg font-semibold text-foreground">Past Daily Reports</h2>
               </div>
-            </ng-template>
-          </ng-container>
-        </section>
-      </ng-container>
-    </mat-card-content>
-  </mat-card>
+              <span class="text-xs text-muted-foreground">Sorted by most recent date</span>
+            </div>
+
+            <!-- Loading State -->
+            <div *ngIf="pastReportsLoading()" class="loading-state mt-4 rounded-2xl border border-dashed border-input bg-background/80 px-6 py-10 text-center text-sm text-muted-foreground">
+              <mat-icon class="mb-2">hourglass_empty</mat-icon>
+              <p>Loading recent reports...</p>
+            </div>
+
+            <!-- Error State -->
+            <div *ngIf="pastReportsError()" class="message-banner error mt-4 rounded-xl px-4 py-3 text-sm flex items-start gap-2">
+              <mat-icon class="text-red-600">error_outline</mat-icon>
+              <span>{{ pastReportsError() }}</span>
+            </div>
+
+            <!-- Past Reports List -->
+            <ng-container *ngIf="!pastReportsLoading() && !pastReportsError()">
+              <ng-container *ngIf="pastReports().length; else noPastReports">
+                <mat-accordion class="mt-4" multi>
+                  <mat-expansion-panel *ngFor="let report of pastReports(); trackBy: trackReport">
+                    <mat-expansion-panel-header>
+                      <mat-panel-title class="flex items-center gap-2">
+                        <mat-icon class="text-primary">event</mat-icon>
+                        {{ formatDate(report.date) }}
+                      </mat-panel-title>
+                      <mat-panel-description class="flex items-center gap-2">
+                        <mat-icon class="text-sm">schedule</mat-icon>
+                        {{ report.entries.length }} hour{{ report.entries.length === 1 ? '' : 's' }} logged
+                        <mat-icon *ngIf="report.complete" class="text-green-600 text-sm ml-2">check_circle</mat-icon>
+                      </mat-panel-description>
+                    </mat-expansion-panel-header>
+
+                    <div class="panel-content space-y-4 py-2 text-sm text-muted-foreground">
+                      <!-- Report Meta -->
+                      <div class="report-meta flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div class="flex flex-wrap gap-3">
+                          <span class="flex items-center gap-1">
+                            <mat-icon class="text-sm">person</mat-icon>
+                            <span class="font-medium text-foreground">{{ report.submittedBy || 'Unknown' }}</span>
+                          </span>
+                          <span class="flex items-center gap-1">
+                            <mat-icon class="text-sm">{{ report.complete ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
+                            <span class="font-medium" [class.text-green-600]="report.complete" [class.text-orange-600]="!report.complete">
+                              {{ report.complete ? 'Complete' : 'Incomplete' }}
+                            </span>
+                          </span>
+                        </div>
+                        <button mat-stroked-button color="primary" (click)="editPastReport(report)">
+                          <mat-icon class="mr-1">edit</mat-icon>
+                          Edit Report
+                        </button>
+                      </div>
+
+                      <!-- Notes -->
+                      <div *ngIf="report.notes" class="report-notes rounded-xl px-4 py-3 text-sm text-foreground">
+                        <div class="flex items-start gap-2">
+                          <mat-icon class="text-primary text-sm">notes</mat-icon>
+                          <div>
+                            <p class="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-1">Notes</p>
+                            <p>{{ report.notes }}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Entries Table -->
+                      <div class="entries-table-small overflow-hidden rounded-2xl border border-input bg-background/70">
+                        <table class="w-full text-xs">
+                          <thead>
+                            <tr class="bg-muted/40 text-[11px] uppercase tracking-wide text-muted-foreground">
+                              <th class="px-4 py-2 text-left">
+                                <div class="flex items-center gap-1">
+                                  <mat-icon class="text-sm">schedule</mat-icon>
+                                  Hour
+                                </div>
+                              </th>
+                              <th class="px-4 py-2 text-left">
+                                <div class="flex items-center gap-1">
+                                  <mat-icon class="text-sm">description</mat-icon>
+                                  Summary
+                                </div>
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr *ngFor="let entry of report.entries" class="border-t border-border text-foreground">
+                              <td class="px-4 py-2 font-semibold">{{ entry.hour }}</td>
+                              <td class="px-4 py-2 text-muted-foreground">{{ entry.activity }}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </mat-expansion-panel>
+                </mat-accordion>
+              </ng-container>
+              <ng-template #noPastReports>
+                <div class="empty-state mt-4 rounded-2xl border border-dashed border-input bg-background/80 px-6 py-10 text-center text-sm text-muted-foreground">
+                  <mat-icon>inbox</mat-icon>
+                  <p class="font-medium">No past reports found</p>
+                  <p class="mt-1 text-xs">Your submitted reports will appear here</p>
+                </div>
+              </ng-template>
+            </ng-container>
+          </section>
+        </ng-container>
+      </mat-card-content>
+    </mat-card>
+  </div>
   `,
 })
 export class EmployeeDailyReportComponent implements OnInit {
@@ -492,35 +582,40 @@ export class EmployeeDailyReportComponent implements OnInit {
     MatTableModule,
     MatCheckboxModule,
     MatIconModule,
+    MatTooltipModule,
     TextFieldModule,
   ],
   template: `
-    <h2 mat-dialog-title>Edit Report for {{ formatDate(data.report.date) }}</h2>
-    <mat-dialog-content class="max-h-[70vh]">
+    <h2 mat-dialog-title class="flex items-center gap-2">
+      <mat-icon class="text-primary">edit_calendar</mat-icon>
+      Edit Report for {{ formatDate(data.report.date) }}
+    </h2>
+    <mat-dialog-content class="dialog-content max-h-[70vh]">
       <form [formGroup]="editForm" class="space-y-4">
-        <div class="grid gap-4 md:grid-cols-[minmax(0,200px)_1fr_auto]">
-          <mat-form-field appearance="outline">
-            <mat-label>Hour</mat-label>
-            <mat-select formControlName="hour">
-              <mat-option *ngFor="let slot of data.timeSlots" [value]="slot">{{ slot }}</mat-option>
-            </mat-select>
-          </mat-form-field>
+        <div class="entry-form-dialog grid gap-4 md:grid-cols-[minmax(0,200px)_1fr_auto]">
+          <div class="form-field-wrapper">
+            <label class="text-xs font-medium text-muted-foreground mb-1 block">Hour</label>
+            <select
+              class="custom-select w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+              formControlName="hour"
+            >
+              <option *ngFor="let slot of data.timeSlots" [value]="slot">{{ slot }}</option>
+            </select>
+          </div>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Activity</mat-label>
+          <div class="form-field-wrapper">
+            <label class="text-xs font-medium text-muted-foreground mb-1 block">Activity</label>
             <textarea
-              matInput
+              class="notes-textarea-custom w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
               formControlName="activity"
               rows="2"
-              cdkTextareaAutosize
-              cdkAutosizeMinRows="2"
-              cdkAutosizeMaxRows="6"
               placeholder="What did you work on?"
             ></textarea>
-          </mat-form-field>
+          </div>
 
           <div class="flex items-end">
-            <button mat-flat-button color="primary" type="button" (click)="addOrUpdateEntry()">
+            <button mat-flat-button color="primary" type="button" (click)="addOrUpdateEntry()" [disabled]="!editForm.get('activity')?.value?.trim()">
+              <mat-icon class="mr-1">{{ editingHour ? 'edit' : 'add' }}</mat-icon>
               {{ editingHour ? 'Update' : 'Add' }}
             </button>
           </div>
@@ -558,25 +653,31 @@ export class EmployeeDailyReportComponent implements OnInit {
           </ng-template>
         </div>
 
-        <mat-form-field appearance="outline" class="w-full">
-          <mat-label>Notes</mat-label>
+        <div class="notes-textarea-wrapper">
+          <label class="text-xs font-medium text-muted-foreground mb-1 block">Notes</label>
           <textarea
-            matInput
+            class="notes-textarea-custom w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
             formControlName="notes"
             rows="3"
-            cdkTextareaAutosize
-            cdkAutosizeMinRows="3"
-            cdkAutosizeMaxRows="8"
             placeholder="Notes for your lead..."
           ></textarea>
-        </mat-form-field>
+          <span class="text-[11px] text-muted-foreground mt-1 block">Optional context for your manager</span>
+        </div>
 
-        <mat-checkbox formControlName="complete">Mark as complete</mat-checkbox>
+        <mat-checkbox formControlName="complete">
+          <span class="font-medium">Mark as complete</span>
+        </mat-checkbox>
       </form>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
-      <button mat-button (click)="cancel()">Cancel</button>
-      <button mat-flat-button color="primary" (click)="save()" [disabled]="!entries.length">Save Changes</button>
+      <button mat-button (click)="cancel()">
+        <mat-icon class="mr-1">close</mat-icon>
+        Cancel
+      </button>
+      <button mat-flat-button color="primary" (click)="save()" [disabled]="!entries.length">
+        <mat-icon class="mr-1">save</mat-icon>
+        Save Changes
+      </button>
     </mat-dialog-actions>
   `,
 })
