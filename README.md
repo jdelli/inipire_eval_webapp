@@ -32,7 +32,7 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 This project is ready to deploy on Vercel as a static Angular app.
 
 - Build command: `npm run build`
-- Output directory: `dist/exec-eval`
+- Output directory: `dist/exec-eval/browser`
 - SPA routing: Configured via `vercel.json` to rewrite all routes to `index.html`.
 
 ### Environment variables
