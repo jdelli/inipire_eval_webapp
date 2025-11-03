@@ -29,7 +29,7 @@ import { animate, style, transition, trigger } from '@angular/animations';
 interface NavItem {
   label: string;
   route: string;
-  icon: 'home' | 'grid' | 'calendar' | 'star' | 'users';
+  icon: 'home' | 'grid' | 'calendar' | 'star' | 'users' | 'schedule' | 'report';
   description: string;
 }
 
@@ -88,6 +88,18 @@ export class ShellComponent {
       description: 'Executive pulse on priorities and sentiment.',
     },
     {
+      label: 'Daily Report',
+      route: '/daily-report',
+      icon: 'schedule',
+      description: 'Capture hourly progress and signal blockers fast.',
+    },
+    {
+      label: 'Incident Report',
+      route: '/incident-report',
+      icon: 'report',
+      description: 'File structured incidents with impact and follow-up actions.',
+    },
+    {
       label: 'Weekly Evaluation',
       route: '/weekly-evaluation',
       icon: 'calendar',
@@ -113,6 +125,8 @@ export class ShellComponent {
     calendar: 'event',
     star: 'grade',
     users: 'group',
+    schedule: 'schedule',
+    report: 'report_problem',
   };
 
   readonly activeNav = signal<NavItem>(this.navItems[0]);
@@ -120,6 +134,10 @@ export class ShellComponent {
 
   readonly tagline = computed(() => {
     switch (this.activeNav().route) {
+      case '/daily-report':
+        return 'Record each hour, celebrate momentum, and surface blockers in real time.';
+      case '/incident-report':
+        return 'Escalate issues with clear impact and owners so your team can respond quickly.';
       case '/weekly-evaluation':
         return 'Maintain the weekly rhythm; highlight where momentum accelerates or stalls.';
       case '/ratings':
