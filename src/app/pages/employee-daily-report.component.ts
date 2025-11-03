@@ -22,6 +22,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 
+const PROJECT_PALETTE = ['#FFAD60', '#FF6B6B', '#4C6EF5', '#20C997', '#3BC9DB', '#845EF7'];
+
 @Component({
   selector: 'app-employee-daily-report',
   standalone: true,
@@ -48,495 +50,288 @@ import { MatNativeDateModule } from '@angular/material/core';
   ],
   styleUrls: ['./employee-daily-report.component.scss'],
   template: `
-  <div class="daily-report-container">
-    <!-- Missing Reports Alert -->
-    <section *ngIf="missingReportAlerts().length" class="mb-6 alert-banner">
-      <mat-card class="border border-amber-300/60 bg-amber-50 text-amber-800">
-        <mat-card-content class="flex items-start gap-3 text-sm">
-          <mat-icon color="warn">campaign</mat-icon>
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-wide">Daily report reminder</p>
-            <p class="mt-1 text-xs">
-              No submission logged for
-              <span class="font-semibold">{{ missingReportAlerts().join(', ') }}</span>.
-            </p>
+  <div class="daily-report-shell">
+    <aside class="calendar-sidebar">
+      <mat-card class="sidebar-card calendar-card">
+        <mat-card-content>
+          <div class="panel-header">
+            <div>
+              <p class="panel-title">Calendar</p>
+              <p class="panel-subtitle">{{ selectedDateAsDate() | date: 'MMMM yyyy' }}</p>
+            </div>
+            <div class="view-toggle">
+              <button type="button" [class.active]="viewMode() === 'day'" (click)="setViewMode('day')" disabled>Day</button>
+              <button type="button" [class.active]="viewMode() === 'week'" (click)="setViewMode('week')">Week</button>
+              <button type="button" [class.active]="viewMode() === 'month'" (click)="setViewMode('month')" disabled>Month</button>
+            </div>
+          </div>
+          <mat-calendar
+            class="month-calendar"
+            [selected]="selectedDateAsDate()"
+            [startAt]="selectedDateAsDate()"
+            [maxDate]="todayDate"
+            (selectedChange)="onCalendarSelected($event)"
+          ></mat-calendar>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="sidebar-card projects-card">
+        <mat-card-content>
+          <div class="panel-header">
+            <p class="panel-title">Projects</p>
+            <span class="panel-subtitle">{{ projects().length }} active</span>
+          </div>
+          <ul class="project-list">
+            <li *ngFor="let project of projects()">
+              <span class="project-dot" [style.background]="project.color"></span>
+              <div class="project-info">
+                <span class="project-code">{{ project.code }}</span>
+                <span class="project-name">{{ project.label }}</span>
+              </div>
+              <span class="project-hours" *ngIf="project.hours">{{ project.hours | number:'1.0-1' }}h</span>
+            </li>
+          </ul>
+          <button mat-stroked-button type="button" class="add-project-btn">
+            <mat-icon>add</mat-icon>
+            Add project
+          </button>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="sidebar-card reminders-card" *ngIf="missingReportAlerts().length">
+        <mat-card-content>
+          <div class="panel-header">
+            <p class="panel-title">Reminders</p>
+          </div>
+          <div class="reminder-chip" *ngFor="let alert of missingReportAlerts()">
+            <mat-icon>campaign</mat-icon>
+            <span>{{ alert }}</span>
           </div>
         </mat-card-content>
       </mat-card>
+    </aside>
+
+    <section class="calendar-main">
+      <header class="main-header">
+        <div class="header-left">
+          <button mat-stroked-button type="button" (click)="goToToday()">Today</button>
+          <div class="week-nav">
+            <button mat-icon-button type="button" (click)="shiftWeek(-1)">
+              <mat-icon>chevron_left</mat-icon>
+            </button>
+            <div class="week-label">{{ weekRangeLabel() }}</div>
+            <button mat-icon-button type="button" (click)="shiftWeek(1)">
+              <mat-icon>chevron_right</mat-icon>
+            </button>
+          </div>
+          <span class="timezone-chip">
+            <mat-icon>public</mat-icon>
+            {{ timezoneLabel }}
+          </span>
+        </div>
+        <div class="header-right">
+          <div class="hours-summary">
+            <span>Worked this week</span>
+            <strong>{{ calendarWeekHours() | number:'1.0-1' }} h</strong>
+          </div>
+          <button mat-flat-button color="primary" type="button" (click)="saveDailyReport()" [disabled]="!entries().length || dailyReportSaving()">
+            <mat-icon>send</mat-icon>
+            Submit time
+          </button>
+        </div>
+      </header>
+
+      <div class="action-toolbar">
+        <div class="status-group">
+          <div class="status-banner success" *ngIf="dailyReportNotice()">
+            <mat-icon>check_circle</mat-icon>
+            <span>{{ dailyReportNotice() }}</span>
+          </div>
+          <div class="status-banner error" *ngIf="dailyReportError()">
+            <mat-icon>error_outline</mat-icon>
+            <span>{{ dailyReportError() }}</span>
+          </div>
+        </div>
+        <div class="action-buttons">
+          <button mat-stroked-button type="button" (click)="copyFromYesterday()">
+            <mat-icon>content_copy</mat-icon>
+            Copy yesterday
+          </button>
+          <button mat-stroked-button type="button" (click)="duplicateLastEntry()" [disabled]="!entries().length">
+            <mat-icon>control_point_duplicate</mat-icon>
+            Duplicate last
+          </button>
+          <button mat-stroked-button type="button" (click)="clearEntries()" [disabled]="!entries().length">
+            <mat-icon>delete_sweep</mat-icon>
+            Clear day
+          </button>
+        </div>
+      </div>
+
+      <section class="schedule-board" [class.loading]="dailyReportLoading()">
+        <div class="loading-overlay" *ngIf="dailyReportLoading()">
+          <mat-icon>hourglass_empty</mat-icon>
+          <span>Loading {{ selectedDateLabel() }}...</span>
+        </div>
+
+        <div class="schedule-head">
+          <div class="time-cell"></div>
+          <div
+            class="day-head"
+            *ngFor="let day of weekDays()"
+            [class.is-today]="day.isToday"
+            [class.is-selected]="day.isSelected"
+            (click)="selectDay(day.dateKey)"
+          >
+            <span class="weekday">{{ day.weekday }}</span>
+            <span class="date">{{ day.dayNumber }}</span>
+          </div>
+        </div>
+
+        <div class="schedule-body">
+          <div class="time-axis">
+            <div *ngFor="let label of calendarTimeLabels()" class="time-label">
+              {{ label }}
+            </div>
+          </div>
+
+          <div class="day-columns">
+            <div
+              class="day-column"
+              *ngFor="let day of weekDays(); let dayIdx = index"
+              [class.is-today]="day.isToday"
+              [class.is-selected]="day.isSelected"
+              (click)="selectDay(day.dateKey)"
+            >
+              <div class="day-grid">
+                <ng-container *ngFor="let event of getEntriesForDay(day.dateKey); let eventIdx = index">
+                  <div
+                    class="event-card"
+                    [ngClass]="getEventColorClass(dayIdx, eventIdx)"
+                    [ngStyle]="getEventStyle(event)"
+                    (click)="onEventClick($event, day.dateKey, event, eventIdx)"
+                  >
+                    <div class="event-time">{{ event.timeStart }} - {{ event.timeEnd }}</div>
+                    <div class="event-title">{{ event.client || 'Internal' }}</div>
+                    <div class="event-meta">{{ event.consultationPlace || 'Office' }}</div>
+                    <p class="event-notes">{{ event.content }}</p>
+                  </div>
+                </ng-container>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="recent-reports" *ngIf="pastReports().length">
+        <header>
+          <h3>Recent reports</h3>
+          <span>{{ pastReports().length }} days</span>
+        </header>
+        <div class="report-chips">
+          <button
+            type="button"
+            class="report-chip"
+            *ngFor="let report of pastReports(); trackBy: trackReport"
+            (click)="editPastReport(report)"
+          >
+            <span class="date">{{ formatDate(report.date) }}</span>
+            <span class="count">{{ report.entries.length }} entries</span>
+          </button>
+        </div>
+      </section>
+
+      <button mat-fab class="add-entry-fab" color="primary" type="button" (click)="toggleEntryDrawer()">
+        <mat-icon>{{ showEntryDrawer() ? 'close' : 'add' }}</mat-icon>
+      </button>
+
+      <div class="entry-drawer" [class.open]="showEntryDrawer()">
+        <div class="drawer-header">
+          <div>
+            <h3>{{ editingIndex() !== null ? 'Update entry' : 'New entry' }}</h3>
+            <p>{{ selectedDateLabel() }}</p>
+          </div>
+          <button mat-icon-button type="button" (click)="closeEntryDrawer()">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+
+        <form class="drawer-form" [formGroup]="entryForm" (ngSubmit)="submitEntry()">
+          <div class="form-row">
+            <mat-form-field appearance="fill">
+              <mat-label>Start</mat-label>
+              <mat-select formControlName="timeStart">
+                <mat-option *ngFor="let slot of timeSlots" [value]="slot">{{ slot }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="fill">
+              <mat-label>End</mat-label>
+              <mat-select formControlName="timeEnd">
+                <mat-option *ngFor="let slot of timeSlots" [value]="slot">{{ slot }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          <div class="form-row">
+            <mat-form-field appearance="fill">
+              <mat-label>Location</mat-label>
+              <input matInput formControlName="consultationPlace" placeholder="Consultation place" />
+            </mat-form-field>
+
+            <mat-form-field appearance="fill">
+              <mat-label>Client</mat-label>
+              <input matInput formControlName="client" placeholder="Client or team" />
+            </mat-form-field>
+          </div>
+
+          <mat-form-field appearance="fill" class="notes-field">
+            <mat-label>Summary</mat-label>
+            <textarea matInput formControlName="content" rows="3" placeholder="What happened?"></textarea>
+          </mat-form-field>
+
+          <div class="drawer-actions">
+            <button mat-button type="button" (click)="cancelEdit()" *ngIf="editingIndex() !== null">
+              Cancel edit
+            </button>
+            <span class="spacer"></span>
+            <button mat-flat-button color="primary" type="submit">
+              <mat-icon>{{ editingIndex() !== null ? 'save' : 'add' }}</mat-icon>
+              {{ editingIndex() !== null ? 'Save entry' : 'Add entry' }}
+            </button>
+          </div>
+        </form>
+
+        <div class="drawer-meta" [formGroup]="dailyMetaForm">
+          <label>Notes for manager</label>
+          <textarea formControlName="notes" rows="3" placeholder="Optional context"></textarea>
+          <mat-checkbox formControlName="complete">Mark day as complete</mat-checkbox>
+        </div>
+
+        <div class="drawer-list" *ngIf="getEntriesForDay(selectedDate()).length">
+          <h4>Today's entries</h4>
+          <div
+            class="drawer-entry"
+            *ngFor="let entry of getEntriesForDay(selectedDate()); let idx = index"
+          >
+            <div class="entry-copy">
+              <strong>{{ entry.timeStart }} - {{ entry.timeEnd }}</strong>
+              <span>{{ entry.client || 'Internal' }}</span>
+              <small>{{ entry.consultationPlace || 'Office' }}</small>
+              <p>{{ entry.content }}</p>
+            </div>
+            <div class="drawer-entry-actions">
+              <button mat-icon-button type="button" (click)="editEntry(entry, idx)">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button type="button" (click)="removeEntry(idx)">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
-
-    <!-- Main Card -->
-  <mat-card class="main-card rounded-3xl bg-card/95 shadow-lg border-2 border-primary/10">
-      <mat-card-header class="card-header-custom gap-4 bg-gradient-to-br from-primary/8 via-primary/5 to-transparent pb-6">
-        <div class="flex-1">
-          <div class="header-actions flex flex-wrap items-center gap-2">
-            <div class="flex items-center gap-2 mr-auto">
-              <mat-icon class="text-sm text-green-600" *ngIf="lastDailyReportSavedAt()">check_circle</mat-icon>
-              <span *ngIf="lastDailyReportSavedAt()" class="text-xs text-muted-foreground">
-                Last saved {{ lastDailyReportSavedAt() | date: 'shortTime' }}
-              </span>
-            </div>
-            <button mat-raised-button color="accent" type="button" (click)="copyFromYesterday()" matTooltip="Copy yesterday's entries" class="shadow-md hover:shadow-lg transition-shadow">
-              <mat-icon class="mr-1">content_copy</mat-icon>
-              Copy Yesterday
-            </button>
-            <button mat-raised-button color="primary" type="button" (click)="duplicateLastEntry()" matTooltip="Duplicate last entry" [disabled]="!entries().length" class="shadow-md hover:shadow-lg transition-shadow">
-              <mat-icon class="mr-1">control_point_duplicate</mat-icon>
-              Duplicate Last
-            </button>
-            <button mat-stroked-button type="button" (click)="resetForm()" matTooltip="Reset form">
-              <mat-icon>refresh</mat-icon>
-            </button>
-            <button mat-stroked-button color="warn" type="button" (click)="clearEntries()" matTooltip="Clear all entries">
-              <mat-icon>delete_sweep</mat-icon>
-            </button>
-          </div>
-        </div>
-      </mat-card-header>
-
-      <mat-divider></mat-divider>
-
-  <mat-card-content class="px-0 py-6">
-        <!-- Error Message -->
-        <div *ngIf="dailyReportError()" class="message-banner error mb-4 rounded-xl px-4 py-3 text-sm flex items-start gap-2">
-          <mat-icon class="text-red-600">error_outline</mat-icon>
-          <span>{{ dailyReportError() }}</span>
-        </div>
-        
-        <!-- Success Message -->
-        <div *ngIf="dailyReportNotice()" class="message-banner success mb-4 rounded-xl px-4 py-3 text-sm flex items-start gap-2">
-          <mat-icon class="text-green-600">check_circle_outline</mat-icon>
-          <span>{{ dailyReportNotice() }}</span>
-        </div>
-
-        <!-- Loading State -->
-        <div *ngIf="dailyReportLoading()" class="loading-state rounded-2xl border border-dashed border-input bg-background/80 px-6 py-10 text-center text-sm text-muted-foreground">
-          <mat-icon class="mb-2">hourglass_empty</mat-icon>
-          <p>Loading report for {{ selectedDateLabel() }}...</p>
-        </div>
-
-        <ng-container *ngIf="!dailyReportLoading()">
-          <!-- Entry Form -->
-          <div class="px-6 mb-6">
-            <div class="bg-gradient-to-br from-primary/5 to-transparent rounded-2xl border-2 border-primary/10 p-6 shadow-sm">
-              <div class="flex items-center justify-between mb-4">
-                <div class="flex items-center gap-2">
-                  <mat-icon class="text-primary">edit_note</mat-icon>
-                  <h3 class="font-bold text-primary">{{ editingIndex() !== null ? 'Edit Entry' : 'Add New Entry' }}</h3>
-                </div>
-                
-                <!-- Date Selector -->
-                <div class="flex items-center gap-2 bg-white rounded-xl border-2 border-primary/20 px-4 py-2 shadow-sm">
-                  <mat-icon class="text-primary text-sm">calendar_today</mat-icon>
-                  <div class="flex items-center gap-2">
-                    <label class="text-[10px] font-bold text-primary uppercase tracking-wide">Report Date:</label>
-                    <input 
-                      type="date" 
-                      [value]="selectedDate()" 
-                      (change)="changeDate($event)"
-                      class="text-sm font-semibold text-foreground bg-transparent border-none outline-none cursor-pointer"
-                      [max]="todayKey"
-                    />
-                  </div>
-                  <button 
-                    mat-icon-button 
-                    (click)="goToToday()" 
-                    matTooltip="Go to today"
-                    [disabled]="selectedDate() === todayKey"
-                    class="text-primary -mr-2"
-                  >
-                    <mat-icon class="text-lg">today</mat-icon>
-                  </button>
-                </div>
-              </div>
-              <form
-                class="grid gap-4 grid-cols-1 lg:grid-cols-[minmax(0,110px)_minmax(0,110px)_1fr_1fr_2fr] items-end"
-                [formGroup]="entryForm"
-                (ngSubmit)="submitEntry()"
-              >
-                <div class="form-field-wrapper">
-                  <label class="text-xs font-bold text-primary mb-2 flex items-center gap-1 uppercase">
-                    <mat-icon class="text-sm">schedule</mat-icon>
-                    Time Start
-                  </label>
-                  <select
-                    class="custom-select w-full rounded-xl border-2 border-primary/20 bg-white px-4 py-3 text-sm font-medium text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all shadow-sm hover:shadow-md"
-                    formControlName="timeStart"
-                  >
-                    <option *ngFor="let slot of timeSlots" [value]="slot">{{ slot }}</option>
-                  </select>
-                </div>
-
-                <div class="form-field-wrapper">
-                  <label class="text-xs font-bold text-primary mb-2 flex items-center gap-1 uppercase">
-                    <mat-icon class="text-sm">schedule</mat-icon>
-                    Time End
-                  </label>
-                  <select
-                    class="custom-select w-full rounded-xl border-2 border-primary/20 bg-white px-4 py-3 text-sm font-medium text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all shadow-sm hover:shadow-md"
-                    formControlName="timeEnd"
-                  >
-                    <option *ngFor="let slot of timeSlots" [value]="slot">{{ slot }}</option>
-                  </select>
-                </div>
-
-                <div class="form-field-wrapper">
-                  <label class="text-xs font-bold text-primary mb-2 flex items-center gap-1 uppercase">
-                    <mat-icon class="text-sm">location_on</mat-icon>
-                    Consultation Place
-                  </label>
-                  <input
-                    type="text"
-                    class="w-full rounded-xl border-2 border-primary/20 bg-white px-4 py-3 text-sm font-medium text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all shadow-sm hover:shadow-md"
-                    formControlName="consultationPlace"
-                    placeholder="e.g., Office, Zoom, etc."
-                  />
-                </div>
-
-                <div class="form-field-wrapper">
-                  <label class="text-xs font-bold text-primary mb-2 flex items-center gap-1 uppercase">
-                    <mat-icon class="text-sm">person</mat-icon>
-                    Client
-                  </label>
-                  <input
-                    type="text"
-                    class="w-full rounded-xl border-2 border-primary/20 bg-white px-4 py-3 text-sm font-medium text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all shadow-sm hover:shadow-md"
-                    formControlName="client"
-                    placeholder="Client name"
-                  />
-                </div>
-
-                <div class="form-field-wrapper">
-                  <label class="text-xs font-bold text-primary mb-2 flex items-center gap-1 uppercase">
-                    <mat-icon class="text-sm">description</mat-icon>
-                    Content
-                  </label>
-                  <input
-                    type="text"
-                    class="w-full rounded-xl border-2 border-primary/20 bg-white px-4 py-3 text-sm font-medium text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all shadow-sm hover:shadow-md"
-                    formControlName="content"
-                    placeholder="Describe work activity..."
-                  />
-                </div>
-
-                <div class="lg:col-span-5 flex gap-2 justify-end mt-2">
-                  <button 
-                    mat-raised-button 
-                    color="primary" 
-                    type="submit" 
-                    class="shadow-md hover:shadow-lg transition-all px-8"
-                    [disabled]="!entryForm.get('content')?.value?.trim()"
-                  >
-                    <mat-icon class="mr-1">{{ editingIndex() !== null ? 'check' : 'add_circle' }}</mat-icon>
-                    {{ editingIndex() !== null ? 'Update Entry' : 'Add Entry' }}
-                  </button>
-                  <button 
-                    *ngIf="editingIndex() !== null"
-                    mat-stroked-button 
-                    type="button" 
-                    (click)="cancelEdit()"
-                    class="px-6"
-                  >
-                    <mat-icon class="mr-1">close</mat-icon>
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-
-          <!-- Content Grid -->
-          <div class="content-grid mt-2 grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)] px-6">
-            <!-- Entries Table Section -->
-            <div>
-              <div class="flex items-center gap-2 mb-3">
-                <mat-icon class="text-primary">list_alt</mat-icon>
-                <h3 class="font-bold text-primary">Today's Entries</h3>
-                <span class="ml-auto text-xs font-semibold text-muted-foreground bg-primary/10 px-3 py-1 rounded-full">
-                  {{ entries().length }} {{ entries().length === 1 ? 'entry' : 'entries' }}
-                </span>
-              </div>
-              <div *ngIf="entries().length; else emptyEntries" class="entries-table-container overflow-hidden rounded-2xl border-2 border-primary/10 bg-white shadow-lg">
-                <table mat-table [dataSource]="entries()" class="w-full text-sm">
-                <ng-container matColumnDef="timeRange">
-                  <th mat-header-cell *matHeaderCellDef class="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-4 text-left text-[11px] font-bold uppercase tracking-wider text-primary border-b-2 border-primary/20">
-                    <div class="flex items-center gap-1">
-                      <mat-icon class="text-sm">schedule</mat-icon>
-                      Time Range
-                    </div>
-                  </th>
-                  <td mat-cell *matCellDef="let entry" class="px-4 py-4 font-bold text-foreground border-b border-gray-100">
-                    <div class="flex items-center gap-2">
-                      <mat-icon class="text-primary text-sm">access_time</mat-icon>
-                      {{ entry.timeStart }} - {{ entry.timeEnd }}
-                    </div>
-                  </td>
-                </ng-container>
-
-                <ng-container matColumnDef="consultationPlace">
-                  <th mat-header-cell *matHeaderCellDef class="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-4 text-left text-[11px] font-bold uppercase tracking-wider text-primary border-b-2 border-primary/20">
-                    <div class="flex items-center gap-1">
-                      <mat-icon class="text-sm">location_on</mat-icon>
-                      Place
-                    </div>
-                  </th>
-                  <td mat-cell *matCellDef="let entry" class="px-4 py-4 text-muted-foreground border-b border-gray-100">{{ entry.consultationPlace }}</td>
-                </ng-container>
-
-                <ng-container matColumnDef="client">
-                  <th mat-header-cell *matHeaderCellDef class="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-4 text-left text-[11px] font-bold uppercase tracking-wider text-primary border-b-2 border-primary/20">
-                    <div class="flex items-center gap-1">
-                      <mat-icon class="text-sm">person</mat-icon>
-                      Client
-                    </div>
-                  </th>
-                  <td mat-cell *matCellDef="let entry" class="px-4 py-4 text-muted-foreground border-b border-gray-100">{{ entry.client }}</td>
-                </ng-container>
-
-                <ng-container matColumnDef="content">
-                  <th mat-header-cell *matHeaderCellDef class="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-4 text-left text-[11px] font-bold uppercase tracking-wider text-primary border-b-2 border-primary/20">
-                    <div class="flex items-center gap-1">
-                      <mat-icon class="text-sm">description</mat-icon>
-                      Content
-                    </div>
-                  </th>
-                  <td mat-cell *matCellDef="let entry" class="px-4 py-4 text-muted-foreground border-b border-gray-100">{{ entry.content }}</td>
-                </ng-container>
-
-                <ng-container matColumnDef="actions">
-                  <th mat-header-cell *matHeaderCellDef class="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-4 text-right text-[11px] font-bold uppercase tracking-wider text-primary border-b-2 border-primary/20">Actions</th>
-                  <td mat-cell *matCellDef="let entry; let i = index" class="px-4 py-4 text-right border-b border-gray-100">
-                    <button mat-mini-fab color="primary" type="button" (click)="editEntry(entry, i)" matTooltip="Edit entry" class="mr-2 shadow-md hover:shadow-lg transition-shadow">
-                      <mat-icon class="text-lg">edit</mat-icon>
-                    </button>
-                    <button mat-mini-fab color="warn" type="button" (click)="removeEntry(i)" matTooltip="Remove entry" class="shadow-md hover:shadow-lg transition-shadow">
-                      <mat-icon>delete</mat-icon>
-                    </button>
-                  </td>
-                </ng-container>
-
-                <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-                <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-              </table>
-              </div>
-              <ng-template #emptyEntries>
-                <div class="empty-state rounded-2xl border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/5 to-transparent px-8 py-12 text-center">
-                  <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-                    <mat-icon class="text-primary text-4xl">event_note</mat-icon>
-                  </div>
-                  <p class="font-bold text-lg text-foreground">No entries yet</p>
-                  <p class="mt-2 text-sm text-muted-foreground max-w-sm mx-auto">Start logging your activities using the form above. Use Quick Actions for faster entry!</p>
-                </div>
-              </ng-template>
-            </div>
-
-            <!-- Sidebar Section -->
-            <div class="sidebar-section space-y-4">
-              <!-- Progress Card -->
-              <mat-card class="stat-card border-2 border-primary/10 bg-gradient-to-br from-primary/5 to-white shadow-lg rounded-2xl overflow-hidden">
-                <div class="bg-gradient-to-r from-primary to-primary/80 px-4 py-3">
-                  <div class="flex items-center gap-2 text-white">
-                    <mat-icon>assessment</mat-icon>
-                    <span class="font-bold">Daily Progress</span>
-                  </div>
-                </div>
-                <mat-card-content class="pt-4">
-                  <div class="flex items-center justify-between mb-3">
-                    <span class="text-sm font-medium text-muted-foreground">Time Logged</span>
-                    <span class="text-lg font-bold text-primary">{{ hoursLogged() }} / {{ timeSlots.length }}</span>
-                  </div>
-                  <mat-progress-bar class="rounded-full h-3 shadow-inner" mode="determinate" [value]="completionPercent()" color="primary"></mat-progress-bar>
-                  <p class="mt-3 text-center text-sm font-semibold text-primary">{{ completionPercent() }}% Complete</p>
-                  <mat-chip *ngIf="missingCount()" color="warn" selected class="mt-4 w-full justify-center shadow-md">
-                    <mat-icon matChipAvatar>priority_high</mat-icon>
-                    {{ missingCount() }} previous day(s) missing
-                  </mat-chip>
-                </mat-card-content>
-              </mat-card>
-
-              <!-- Notes & Submit Card -->
-              <mat-card class="notes-card border-2 border-primary/10 bg-white shadow-lg rounded-2xl overflow-hidden">
-                <div class="bg-gradient-to-r from-primary to-primary/80 px-4 py-3">
-                  <div class="flex items-center gap-2 text-white">
-                    <mat-icon>send</mat-icon>
-                    <span class="font-bold">Submit Report</span>
-                  </div>
-                </div>
-                <mat-card-content class="pt-4">
-                  <form class="space-y-4" [formGroup]="dailyMetaForm" (ngSubmit)="saveDailyReport()">
-                    <div class="notes-textarea-wrapper">
-                      <label class="text-xs font-bold text-primary mb-2 flex items-center gap-1 uppercase">
-                        <mat-icon class="text-sm">edit_note</mat-icon>
-                        Notes for Manager
-                      </label>
-                      <textarea
-                        class="notes-textarea-custom w-full rounded-xl border-2 border-primary/20 bg-white px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all shadow-sm"
-                        formControlName="notes"
-                        rows="4"
-                        placeholder="Highlights, blockers, or reminders..."
-                      ></textarea>
-                      <span class="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
-                        <mat-icon class="text-xs">info</mat-icon>
-                        Optional context for your manager
-                      </span>
-                    </div>
-
-                    <div class="bg-primary/5 rounded-xl p-3 border border-primary/10">
-                      <mat-checkbox formControlName="complete" class="font-medium">
-                        <span class="font-semibold text-sm">Mark day complete</span>
-                      </mat-checkbox>
-                      <p class="mt-1 ml-8 text-[11px] leading-relaxed text-muted-foreground">
-                        Uncheck if you plan to add more later
-                      </p>
-                    </div>
-
-                    <button 
-                      mat-raised-button 
-                      color="primary" 
-                      type="submit" 
-                      class="w-full shadow-lg hover:shadow-xl transition-all py-6 text-base font-bold"
-                      [disabled]="dailyReportSaving() || !entries().length"
-                    >
-                      <mat-icon class="mr-2">{{ dailyReportSaving() ? 'hourglass_empty' : 'cloud_upload' }}</mat-icon>
-                      <ng-container *ngIf="dailyReportSaving(); else saveLabel">Saving...</ng-container>
-                      <ng-template #saveLabel>Save Daily Report</ng-template>
-                    </button>
-                  </form>
-                </mat-card-content>
-              </mat-card>
-            </div>
-          </div>
-
-          <mat-divider class="my-8"></mat-divider>
-
-          <!-- Past Reports Section -->
-          <section class="past-reports-section">
-            <div class="section-header flex flex-wrap items-center justify-between gap-3">
-              <div class="flex items-center gap-2">
-                <mat-icon class="text-primary">history</mat-icon>
-                <h2 class="text-lg font-semibold text-foreground">Past Daily Reports</h2>
-              </div>
-              <span class="text-xs text-muted-foreground">Sorted by most recent date</span>
-            </div>
-
-            <!-- Loading State -->
-            <div *ngIf="pastReportsLoading()" class="loading-state mt-4 rounded-2xl border border-dashed border-input bg-background/80 px-6 py-10 text-center text-sm text-muted-foreground">
-              <mat-icon class="mb-2">hourglass_empty</mat-icon>
-              <p>Loading recent reports...</p>
-            </div>
-
-            <!-- Error State -->
-            <div *ngIf="pastReportsError()" class="message-banner error mt-4 rounded-xl px-4 py-3 text-sm flex items-start gap-2">
-              <mat-icon class="text-red-600">error_outline</mat-icon>
-              <span>{{ pastReportsError() }}</span>
-            </div>
-
-            <!-- Past Reports List -->
-            <ng-container *ngIf="!pastReportsLoading() && !pastReportsError()">
-              <ng-container *ngIf="pastReports().length; else noPastReports">
-                <mat-accordion class="mt-4" multi>
-                  <mat-expansion-panel *ngFor="let report of pastReports(); trackBy: trackReport">
-                    <mat-expansion-panel-header>
-                      <mat-panel-title class="flex items-center gap-2">
-                        <mat-icon class="text-primary">event</mat-icon>
-                        {{ formatDate(report.date) }}
-                      </mat-panel-title>
-                      <mat-panel-description class="flex items-center gap-2">
-                        <mat-icon class="text-sm">schedule</mat-icon>
-                        {{ report.entries.length }} hour{{ report.entries.length === 1 ? '' : 's' }} logged
-                        <mat-icon *ngIf="report.complete" class="text-green-600 text-sm ml-2">check_circle</mat-icon>
-                      </mat-panel-description>
-                    </mat-expansion-panel-header>
-
-                    <div class="panel-content space-y-4 py-2 text-sm text-muted-foreground">
-                      <!-- Report Meta -->
-                      <div class="report-meta flex flex-wrap items-center justify-between gap-2 text-xs">
-                        <div class="flex flex-wrap gap-3">
-                          <span class="flex items-center gap-1">
-                            <mat-icon class="text-sm">person</mat-icon>
-                            <span class="font-medium text-foreground">{{ report.submittedBy || 'Unknown' }}</span>
-                          </span>
-                          <span class="flex items-center gap-1">
-                            <mat-icon class="text-sm">{{ report.complete ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
-                            <span class="font-medium" [class.text-green-600]="report.complete" [class.text-orange-600]="!report.complete">
-                              {{ report.complete ? 'Complete' : 'Incomplete' }}
-                            </span>
-                          </span>
-                        </div>
-                        <button mat-stroked-button color="primary" (click)="editPastReport(report)">
-                          <mat-icon class="mr-1">edit</mat-icon>
-                          Edit Report
-                        </button>
-                      </div>
-
-                      <!-- Notes -->
-                      <div *ngIf="report.notes" class="report-notes rounded-xl px-4 py-3 text-sm text-foreground">
-                        <div class="flex items-start gap-2">
-                          <mat-icon class="text-primary text-sm">notes</mat-icon>
-                          <div>
-                            <p class="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-1">Notes</p>
-                            <p>{{ report.notes }}</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <!-- Entries Table -->
-                      <div class="entries-table-small overflow-hidden rounded-2xl border border-input bg-background/70">
-                        <table class="w-full text-xs">
-                          <thead>
-                            <tr class="bg-muted/40 text-[11px] uppercase tracking-wide text-muted-foreground">
-                              <th class="px-4 py-2 text-left">
-                                <div class="flex items-center gap-1">
-                                  <mat-icon class="text-sm">schedule</mat-icon>
-                                  Time
-                                </div>
-                              </th>
-                              <th class="px-4 py-2 text-left">
-                                <div class="flex items-center gap-1">
-                                  <mat-icon class="text-sm">place</mat-icon>
-                                  Consultation Place
-                                </div>
-                              </th>
-                              <th class="px-4 py-2 text-left">
-                                <div class="flex items-center gap-1">
-                                  <mat-icon class="text-sm">person</mat-icon>
-                                  Client
-                                </div>
-                              </th>
-                              <th class="px-4 py-2 text-left">
-                                <div class="flex items-center gap-1">
-                                  <mat-icon class="text-sm">description</mat-icon>
-                                  Content
-                                </div>
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr *ngFor="let entry of report.entries" class="border-t border-border text-foreground">
-                              <td class="px-4 py-2 font-semibold">{{ entry.timeStart }} - {{ entry.timeEnd }}</td>
-                              <td class="px-4 py-2 text-muted-foreground">{{ entry.consultationPlace }}</td>
-                              <td class="px-4 py-2 text-muted-foreground">{{ entry.client }}</td>
-                              <td class="px-4 py-2 text-muted-foreground">{{ entry.content }}</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </mat-expansion-panel>
-                </mat-accordion>
-              </ng-container>
-              <ng-template #noPastReports>
-                <div class="empty-state mt-4 rounded-2xl border border-dashed border-input bg-background/80 px-6 py-10 text-center text-sm text-muted-foreground">
-                  <mat-icon>inbox</mat-icon>
-                  <p class="font-medium">No past reports found</p>
-                  <p class="mt-1 text-xs">Your submitted reports will appear here</p>
-                </div>
-              </ng-template>
-            </ng-container>
-          </section>
-        </ng-container>
-      </mat-card-content>
-    </mat-card>
   </div>
   `,
 })
@@ -567,8 +362,24 @@ export class EmployeeDailyReportComponent implements OnInit {
   readonly todayLabel = formatDateLabel(this.todayKey);
   readonly selectedDate = signal<string>(toDateKey(new Date())); // Selected date for the report
   readonly selectedDateLabel = computed(() => formatDateLabel(this.selectedDate()));
+  readonly todayDate = startOfDay(new Date());
+  readonly timezoneLabel = 'GMT';
+  readonly viewMode = signal<'day' | 'week' | 'month'>('week');
+  readonly showEntryDrawer = signal(false);
+  readonly selectedDateAsDate = computed(() => toDateFromKey(this.selectedDate()));
+  readonly weekDays = computed(() => buildWeekDays(this.selectedDate(), this.todayKey));
+  readonly weekRangeLabel = computed(() => {
+    const days = this.weekDays();
+    if (!days.length) {
+      return '';
+    }
+    const first = days[0].date;
+    const last = days[days.length - 1].date;
+    return formatWeekRangeLabel(first, last);
+  });
 
   readonly timeSlots: string[] = ['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00','18:30','19:00'];
+  readonly calendarTimeLabels = computed(() => this.timeSlots.filter((_, index) => index % 2 === 0));
   readonly entries = signal<DailyReportEntry[]>([]);
   readonly editingIndex = signal<number | null>(null);
   readonly dailyReportLoading = signal(false);
@@ -588,6 +399,44 @@ export class EmployeeDailyReportComponent implements OnInit {
     const total = this.timeSlots.length; if (!total) return 0; return Math.round((this.entries().length / total) * 100);
   });
   readonly missingCount = computed(() => this.missingReportAlerts().length);
+  readonly calendarWeekHours = computed(() =>
+    this.weekDays().reduce((total, day) => {
+      const items = this.getEntriesForDay(day.dateKey);
+      return total + items.reduce((sum, entry) => sum + calculateEntryHours(entry), 0);
+    }, 0)
+  );
+  readonly projects = computed(() => {
+    const bucket = new Map<string, { hours: number }>();
+    const accumulate = (items: DailyReportEntry[]) => {
+      items.forEach((entry) => {
+        const key = entry.client?.trim() || 'General';
+        const record = bucket.get(key) ?? { hours: 0 };
+        record.hours += calculateEntryHours(entry);
+        bucket.set(key, record);
+      });
+    };
+
+    accumulate(this.entries());
+    this.pastReports().forEach((report) => accumulate(report.entries ?? []));
+
+    const result = Array.from(bucket.entries()).map(([label, data], index) => ({
+      label,
+      code: buildProjectCode(label, index),
+      color: PROJECT_PALETTE[index % PROJECT_PALETTE.length],
+      hours: Number(data.hours.toFixed(1)),
+    }));
+
+    if (!result.length) {
+      result.push({
+        label: 'General',
+        code: buildProjectCode('General', 0),
+        color: PROJECT_PALETTE[0],
+        hours: 0,
+      });
+    }
+
+    return result;
+  });
 
   readonly entryForm = this.fb.nonNullable.group({ 
     timeStart: this.timeSlots[0], 
@@ -649,6 +498,90 @@ export class EmployeeDailyReportComponent implements OnInit {
   }
 
   ngOnInit(): void {}
+
+  setViewMode(mode: 'day' | 'week' | 'month'): void {
+    this.viewMode.set(mode);
+  }
+
+  shiftWeek(direction: number): void {
+    const current = this.selectedDateAsDate();
+    const target = addDays(current, direction * 7);
+    const clamped = target > this.todayDate ? this.todayDate : target;
+    this.selectedDate.set(toDateKey(clamped));
+    this.showEntryDrawer.set(false);
+  }
+
+  onCalendarSelected(date: Date | null): void {
+    if (!date) {
+      return;
+    }
+    const cleaned = startOfDay(date);
+    const clamped = cleaned > this.todayDate ? this.todayDate : cleaned;
+    this.selectedDate.set(toDateKey(clamped));
+    this.showEntryDrawer.set(false);
+  }
+
+  selectDay(dateKey: string): void {
+    if (this.selectedDate() !== dateKey) {
+      this.selectedDate.set(dateKey);
+      this.showEntryDrawer.set(false);
+    }
+  }
+
+  toggleEntryDrawer(): void {
+    const next = !this.showEntryDrawer();
+    this.showEntryDrawer.set(next);
+    if (next) {
+      this.editingIndex.set(null);
+      this.resetForm();
+    }
+  }
+
+  closeEntryDrawer(): void {
+    if (this.showEntryDrawer()) {
+      this.showEntryDrawer.set(false);
+      this.resetForm();
+    }
+  }
+
+  getEntriesForDay(dateKey: string): DailyReportEntry[] {
+    if (dateKey === this.selectedDate()) {
+      return this.entries();
+    }
+    const report = this.pastReports().find((item) => item.date === dateKey);
+    return report?.entries ?? [];
+  }
+
+  getEventStyle(entry: DailyReportEntry): Record<string, string> {
+    const baseMinutes = timeToMinutes(this.timeSlots[0]);
+    const startMinutes = Math.max(timeToMinutes(entry.timeStart ?? this.timeSlots[0]) - baseMinutes, 0);
+    const endMinutes = Math.max(timeToMinutes(entry.timeEnd ?? entry.timeStart ?? this.timeSlots[0]) - baseMinutes, 0);
+    const durationMinutes = Math.max(endMinutes - startMinutes, 30);
+    const slotsFromStart = startMinutes / 30;
+    const slotSpan = durationMinutes / 30;
+    return {
+      top: `calc(${slotsFromStart} * var(--slot-height))`,
+      height: `calc(${slotSpan} * var(--slot-height))`,
+    };
+  }
+
+  getEventColorClass(dayIndex: number, eventIndex: number): string {
+    const variant = ((dayIndex + eventIndex) % 5) + 1;
+    return `event-color-${variant}`;
+  }
+
+  onEventClick(event: MouseEvent, dateKey: string, entry: DailyReportEntry, index: number): void {
+    event.stopPropagation();
+    if (dateKey === this.selectedDate()) {
+      this.editEntry(entry, index);
+      this.showEntryDrawer.set(true);
+      return;
+    }
+    const report = this.pastReports().find((item) => item.date === dateKey);
+    if (report) {
+      this.editPastReport(report);
+    }
+  }
 
   loadDailyReport(employeeId?: string, source?: 'employees' | 'trainingRecords'): void {
     const targetId = employeeId ?? this.employeeId();
@@ -836,21 +769,19 @@ export class EmployeeDailyReportComponent implements OnInit {
       client: lastEntry.client,
       content: lastEntry.content
     });
-  }
-
-  changeDate(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const newDate = input.value; // Format: YYYY-MM-DD
-    if (newDate) {
-      this.selectedDate.set(newDate);
-    }
+    this.showEntryDrawer.set(true);
   }
 
   goToToday(): void {
     this.selectedDate.set(this.todayKey);
   }
 
-  clearEntries(): void { this.entries.set([]); this.resetForm(); this.dailyMetaForm.setValue({ notes: '', complete: true }); }
+  clearEntries(): void {
+    this.entries.set([]);
+    this.resetForm();
+    this.dailyMetaForm.setValue({ notes: '', complete: true });
+    this.showEntryDrawer.set(false);
+  }
   editEntry(entry: DailyReportEntry, index: number): void { 
     this.editingIndex.set(index); 
     this.entryForm.setValue({ 
@@ -860,6 +791,7 @@ export class EmployeeDailyReportComponent implements OnInit {
       client: entry.client, 
       content: entry.content 
     }); 
+    this.showEntryDrawer.set(true);
   }
   removeEntry(index: number): void { 
     this.entries.update((items) => items.filter((_, i) => i !== index)); 
@@ -1166,3 +1098,60 @@ export class EditPastReportDialog {
 function toDateKey(date: Date): string { return date.toISOString().slice(0, 10); }
 function formatDateLabel(dateKey: string): string { const parsed = new Date(`${dateKey}T00:00:00Z`); if (Number.isNaN(parsed.getTime())) return dateKey; return parsed.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }); }
 function sortEntries(entries: DailyReportEntry[]): DailyReportEntry[] { return [...entries].sort((a, b) => a.timeStart.localeCompare(b.timeStart)); }
+function toDateFromKey(dateKey: string): Date { const parsed = new Date(`${dateKey}T00:00:00`); return Number.isNaN(parsed.getTime()) ? new Date() : parsed; }
+function startOfDay(date: Date): Date { const value = new Date(date); value.setHours(0, 0, 0, 0); return value; }
+function startOfWeekFromDate(date: Date): Date { const value = startOfDay(date); const day = value.getDay(); const diff = (day + 6) % 7; value.setDate(value.getDate() - diff); return value; }
+function addDays(date: Date, days: number): Date { const value = new Date(date); value.setDate(value.getDate() + days); return value; }
+function formatWeekRangeLabel(start: Date, end: Date): string {
+  const sameMonth = start.getMonth() === end.getMonth();
+  const sameYear = start.getFullYear() === end.getFullYear();
+  if (sameMonth && sameYear) {
+    const month = start.toLocaleDateString(undefined, { month: 'long' });
+    return `${month} ${start.getDate()} - ${end.getDate()}, ${start.getFullYear()}`;
+  }
+  const startLabel = start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const endLabel = end.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  return `${startLabel} - ${endLabel}`;
+}
+function timeToMinutes(value: string | undefined): number {
+  if (!value) return 0;
+  const [hours, minutes] = value.split(':').map(Number);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return 0;
+  return hours * 60 + minutes;
+}
+function calculateEntryHours(entry: DailyReportEntry): number {
+  const start = timeToMinutes(entry.timeStart);
+  const end = timeToMinutes(entry.timeEnd);
+  const duration = Math.max(end - start, 30);
+  return duration / 60;
+}
+function buildProjectCode(label: string, index: number): string {
+  const cleaned = label.trim();
+  if (!cleaned) {
+    return `PR${(index + 1).toString().padStart(3, '0')}`;
+  }
+  const normalized = cleaned.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  if (!normalized) {
+    return `PR${(index + 1).toString().padStart(3, '0')}`;
+  }
+  const hash = normalized.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0) + index * 37;
+  const number = (hash % 900) + 100;
+  return `PR${number}`;
+}
+function buildWeekDays(selectedDateKey: string, todayKey: string) {
+  const selectedDate = toDateFromKey(selectedDateKey);
+  const start = startOfWeekFromDate(selectedDate);
+  return Array.from({ length: 7 }, (_, index) => {
+    const current = addDays(start, index);
+    const dateKey = toDateKey(current);
+    return {
+      date: current,
+      dateKey,
+      weekday: current.toLocaleDateString(undefined, { weekday: 'short' }),
+      dayNumber: current.getDate(),
+      isToday: dateKey === todayKey,
+      isSelected: dateKey === selectedDateKey,
+    };
+  });
+}
+
