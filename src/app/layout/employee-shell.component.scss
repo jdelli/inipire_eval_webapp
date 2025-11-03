@@ -1,0 +1,172 @@
+// Employee Shell Component Styles
+
+// Enhanced navigation tabs
+::ng-deep {
+  .mat-mdc-tab-link {
+    transition: all 0.3s ease;
+    border-radius: 12px;
+    margin: 0 4px;
+    
+    &:hover {
+      background: rgba(var(--mat-primary-rgb), 0.08) !important;
+      transform: translateY(-2px);
+    }
+    
+    &.is-active,
+    &.mdc-tab--active {
+      background: linear-gradient(135deg, rgba(var(--mat-primary-rgb), 0.15), rgba(var(--mat-primary-rgb), 0.08)) !important;
+      border-bottom: 3px solid rgb(var(--mat-primary-rgb)) !important;
+      font-weight: 700;
+      
+      mat-icon {
+        color: rgb(var(--mat-primary-rgb));
+      }
+    }
+  }
+
+  .mat-mdc-tab-nav-bar {
+    border-bottom: none !important;
+  }
+
+  // Enhanced mat-toolbar
+  mat-toolbar {
+    padding: 0 1.5rem !important;
+    min-height: 80px !important;
+  }
+
+  // Enhanced card styling
+  mat-card {
+    transition: all 0.3s ease;
+    
+    mat-card-header {
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+    
+    mat-card-title {
+      margin: 0 !important;
+      font-size: 1rem !important;
+    }
+    
+    mat-card-content {
+      padding: 1.5rem !important;
+    }
+  }
+
+  // Progress bar enhancements
+  .mat-mdc-progress-bar {
+    border-radius: 9999px;
+    overflow: hidden;
+    
+    .mdc-linear-progress__bar-inner {
+      border-radius: 9999px;
+    }
+  }
+
+  // Chip enhancements
+  .mat-mdc-chip {
+    font-weight: 600;
+    letter-spacing: 0.025em;
+  }
+}
+
+// Avatar online indicator animation
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  }
+  
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+  }
+  
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+.online-indicator {
+  animation: pulse-ring 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
+}
+
+// Card hover effects
+mat-card {
+  &:hover {
+    transform: translateY(-4px);
+  }
+}
+
+// Smooth transitions for all interactive elements
+button,
+a,
+.mat-mdc-tab-link {
+  transition: all 0.2s ease-in-out;
+}
+
+// Background gradient animation
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animated-gradient {
+  background-size: 200% 200%;
+  animation: gradientShift 15s ease infinite;
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  ::ng-deep mat-toolbar {
+    min-height: 64px !important;
+    padding: 0 1rem !important;
+  }
+}
+
+// Loading state shimmer
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.shimmer {
+  animation: shimmer 2s infinite linear;
+  background: linear-gradient(to right, #f6f7f8 0%, #edeef1 20%, #f6f7f8 40%, #f6f7f8 100%);
+  background-size: 1000px 100%;
+}
+
+// Custom scrollbar for navigation
+.overflow-x-auto {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--mat-primary-rgb), 0.3) transparent;
+  
+  &::-webkit-scrollbar {
+    height: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(var(--mat-primary-rgb), 0.3);
+    border-radius: 20px;
+    
+    &:hover {
+      background-color: rgba(var(--mat-primary-rgb), 0.5);
+    }
+  }
+}

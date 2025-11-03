@@ -19,8 +19,8 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatDialog, MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
-
-interface DailyEntry { hour: string; activity: string; }
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
 
 @Component({
   selector: 'app-employee-daily-report',
@@ -42,6 +42,8 @@ interface DailyEntry { hour: string; activity: string; }
     MatExpansionModule,
     MatDialogModule,
     MatTooltipModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
     TextFieldModule,
   ],
   styleUrls: ['./employee-daily-report.component.scss'],
@@ -64,25 +66,31 @@ interface DailyEntry { hour: string; activity: string; }
     </section>
 
     <!-- Main Card -->
-  <mat-card class="main-card rounded-3xl bg-card/95 shadow-lg">
-      <mat-card-header class="card-header-custom gap-3">
-        <div mat-card-avatar class="avatar-icon flex size-10 items-center justify-center rounded-xl text-white">
-          <mat-icon>schedule</mat-icon>
-        </div>
-        <div>
-          <mat-card-title class="text-xl font-semibold">Daily report for {{ todayLabel }}</mat-card-title>
-          <mat-card-subtitle>Capture each hour and send updates straight to your lead.</mat-card-subtitle>
-        </div>
-        <div class="header-actions ml-auto flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span *ngIf="lastDailyReportSavedAt()">Saved {{ lastDailyReportSavedAt() | date: 'shortTime' }}</span>
-          <button mat-stroked-button color="primary" type="button" (click)="resetForm()">
-            <mat-icon class="mr-1">refresh</mat-icon>
-            Reset
-          </button>
-          <button mat-stroked-button type="button" (click)="clearEntries()">
-            <mat-icon class="mr-1">clear_all</mat-icon>
-            Clear
-          </button>
+  <mat-card class="main-card rounded-3xl bg-card/95 shadow-lg border-2 border-primary/10">
+      <mat-card-header class="card-header-custom gap-4 bg-gradient-to-br from-primary/8 via-primary/5 to-transparent pb-6">
+        <div class="flex-1">
+          <div class="header-actions flex flex-wrap items-center gap-2">
+            <div class="flex items-center gap-2 mr-auto">
+              <mat-icon class="text-sm text-green-600" *ngIf="lastDailyReportSavedAt()">check_circle</mat-icon>
+              <span *ngIf="lastDailyReportSavedAt()" class="text-xs text-muted-foreground">
+                Last saved {{ lastDailyReportSavedAt() | date: 'shortTime' }}
+              </span>
+            </div>
+            <button mat-raised-button color="accent" type="button" (click)="copyFromYesterday()" matTooltip="Copy yesterday's entries" class="shadow-md hover:shadow-lg transition-shadow">
+              <mat-icon class="mr-1">content_copy</mat-icon>
+              Copy Yesterday
+            </button>
+            <button mat-raised-button color="primary" type="button" (click)="duplicateLastEntry()" matTooltip="Duplicate last entry" [disabled]="!entries().length" class="shadow-md hover:shadow-lg transition-shadow">
+              <mat-icon class="mr-1">control_point_duplicate</mat-icon>
+              Duplicate Last
+            </button>
+            <button mat-stroked-button type="button" (click)="resetForm()" matTooltip="Reset form">
+              <mat-icon>refresh</mat-icon>
+            </button>
+            <button mat-stroked-button color="warn" type="button" (click)="clearEntries()" matTooltip="Clear all entries">
+              <mat-icon>delete_sweep</mat-icon>
+            </button>
+          </div>
         </div>
       </mat-card-header>
 
@@ -104,68 +112,204 @@ interface DailyEntry { hour: string; activity: string; }
         <!-- Loading State -->
         <div *ngIf="dailyReportLoading()" class="loading-state rounded-2xl border border-dashed border-input bg-background/80 px-6 py-10 text-center text-sm text-muted-foreground">
           <mat-icon class="mb-2">hourglass_empty</mat-icon>
-          <p>Loading today's log...</p>
+          <p>Loading report for {{ selectedDateLabel() }}...</p>
         </div>
 
         <ng-container *ngIf="!dailyReportLoading()">
           <!-- Entry Form -->
-          <form
-            class="entry-form grid gap-4 grid-cols-1 md:grid-cols-[minmax(0,180px)_1fr] lg:grid-cols-[minmax(0,200px)_1fr_auto]"
-            [formGroup]="entryForm"
-            (ngSubmit)="submitEntry()"
-          >
-            <div class="form-field-wrapper">
-              <label class="text-xs font-medium text-muted-foreground mb-1 block">Hour</label>
-              <select
-                class="custom-select w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                formControlName="hour"
+          <div class="px-6 mb-6">
+            <div class="bg-gradient-to-br from-primary/5 to-transparent rounded-2xl border-2 border-primary/10 p-6 shadow-sm">
+              <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                  <mat-icon class="text-primary">edit_note</mat-icon>
+                  <h3 class="font-bold text-primary">{{ editingIndex() !== null ? 'Edit Entry' : 'Add New Entry' }}</h3>
+                </div>
+                
+                <!-- Date Selector -->
+                <div class="flex items-center gap-2 bg-white rounded-xl border-2 border-primary/20 px-4 py-2 shadow-sm">
+                  <mat-icon class="text-primary text-sm">calendar_today</mat-icon>
+                  <div class="flex items-center gap-2">
+                    <label class="text-[10px] font-bold text-primary uppercase tracking-wide">Report Date:</label>
+                    <input 
+                      type="date" 
+                      [value]="selectedDate()" 
+                      (change)="changeDate($event)"
+                      class="text-sm font-semibold text-foreground bg-transparent border-none outline-none cursor-pointer"
+                      [max]="todayKey"
+                    />
+                  </div>
+                  <button 
+                    mat-icon-button 
+                    (click)="goToToday()" 
+                    matTooltip="Go to today"
+                    [disabled]="selectedDate() === todayKey"
+                    class="text-primary -mr-2"
+                  >
+                    <mat-icon class="text-lg">today</mat-icon>
+                  </button>
+                </div>
+              </div>
+              <form
+                class="grid gap-4 grid-cols-1 lg:grid-cols-[minmax(0,110px)_minmax(0,110px)_1fr_1fr_2fr] items-end"
+                [formGroup]="entryForm"
+                (ngSubmit)="submitEntry()"
               >
-                <option *ngFor="let slot of timeSlots" [value]="slot">{{ slot }}</option>
-              </select>
-            </div>
+                <div class="form-field-wrapper">
+                  <label class="text-xs font-bold text-primary mb-2 flex items-center gap-1 uppercase">
+                    <mat-icon class="text-sm">schedule</mat-icon>
+                    Time Start
+                  </label>
+                  <select
+                    class="custom-select w-full rounded-xl border-2 border-primary/20 bg-white px-4 py-3 text-sm font-medium text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all shadow-sm hover:shadow-md"
+                    formControlName="timeStart"
+                  >
+                    <option *ngFor="let slot of timeSlots" [value]="slot">{{ slot }}</option>
+                  </select>
+                </div>
 
-            <div class="form-field-wrapper">
-              <label class="text-xs font-medium text-muted-foreground mb-1 block">What did you work on?</label>
-              <textarea
-                class="notes-textarea-custom w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                formControlName="activity"
-                rows="2"
-                placeholder="Draft release notes, resolved customer escalations, paired with QA..."
-              ></textarea>
-              <span class="text-[11px] text-muted-foreground mt-1 block">Be specific about your accomplishments</span>
-            </div>
+                <div class="form-field-wrapper">
+                  <label class="text-xs font-bold text-primary mb-2 flex items-center gap-1 uppercase">
+                    <mat-icon class="text-sm">schedule</mat-icon>
+                    Time End
+                  </label>
+                  <select
+                    class="custom-select w-full rounded-xl border-2 border-primary/20 bg-white px-4 py-3 text-sm font-medium text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all shadow-sm hover:shadow-md"
+                    formControlName="timeEnd"
+                  >
+                    <option *ngFor="let slot of timeSlots" [value]="slot">{{ slot }}</option>
+                  </select>
+                </div>
 
-            <div class="flex items-end justify-end md:col-span-2 lg:col-span-1">
-              <button mat-flat-button color="primary" type="submit" class="w-full lg:w-auto" [disabled]="!entryForm.get('activity')?.value?.trim()">
-                <mat-icon class="mr-1">{{ editingHour() ? 'edit' : 'add' }}</mat-icon>
-                {{ editingHour() ? 'Update' : 'Add Entry' }}
-              </button>
+                <div class="form-field-wrapper">
+                  <label class="text-xs font-bold text-primary mb-2 flex items-center gap-1 uppercase">
+                    <mat-icon class="text-sm">location_on</mat-icon>
+                    Consultation Place
+                  </label>
+                  <input
+                    type="text"
+                    class="w-full rounded-xl border-2 border-primary/20 bg-white px-4 py-3 text-sm font-medium text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all shadow-sm hover:shadow-md"
+                    formControlName="consultationPlace"
+                    placeholder="e.g., Office, Zoom, etc."
+                  />
+                </div>
+
+                <div class="form-field-wrapper">
+                  <label class="text-xs font-bold text-primary mb-2 flex items-center gap-1 uppercase">
+                    <mat-icon class="text-sm">person</mat-icon>
+                    Client
+                  </label>
+                  <input
+                    type="text"
+                    class="w-full rounded-xl border-2 border-primary/20 bg-white px-4 py-3 text-sm font-medium text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all shadow-sm hover:shadow-md"
+                    formControlName="client"
+                    placeholder="Client name"
+                  />
+                </div>
+
+                <div class="form-field-wrapper">
+                  <label class="text-xs font-bold text-primary mb-2 flex items-center gap-1 uppercase">
+                    <mat-icon class="text-sm">description</mat-icon>
+                    Content
+                  </label>
+                  <input
+                    type="text"
+                    class="w-full rounded-xl border-2 border-primary/20 bg-white px-4 py-3 text-sm font-medium text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all shadow-sm hover:shadow-md"
+                    formControlName="content"
+                    placeholder="Describe work activity..."
+                  />
+                </div>
+
+                <div class="lg:col-span-5 flex gap-2 justify-end mt-2">
+                  <button 
+                    mat-raised-button 
+                    color="primary" 
+                    type="submit" 
+                    class="shadow-md hover:shadow-lg transition-all px-8"
+                    [disabled]="!entryForm.get('content')?.value?.trim()"
+                  >
+                    <mat-icon class="mr-1">{{ editingIndex() !== null ? 'check' : 'add_circle' }}</mat-icon>
+                    {{ editingIndex() !== null ? 'Update Entry' : 'Add Entry' }}
+                  </button>
+                  <button 
+                    *ngIf="editingIndex() !== null"
+                    mat-stroked-button 
+                    type="button" 
+                    (click)="cancelEdit()"
+                    class="px-6"
+                  >
+                    <mat-icon class="mr-1">close</mat-icon>
+                    Cancel
+                  </button>
+                </div>
+              </form>
             </div>
-          </form>
+          </div>
 
           <!-- Content Grid -->
-          <div class="content-grid mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)]">
+          <div class="content-grid mt-2 grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)] px-6">
             <!-- Entries Table Section -->
             <div>
-              <div *ngIf="entries().length; else emptyEntries" class="entries-table-container overflow-hidden rounded-2xl border border-input bg-background/80">
+              <div class="flex items-center gap-2 mb-3">
+                <mat-icon class="text-primary">list_alt</mat-icon>
+                <h3 class="font-bold text-primary">Today's Entries</h3>
+                <span class="ml-auto text-xs font-semibold text-muted-foreground bg-primary/10 px-3 py-1 rounded-full">
+                  {{ entries().length }} {{ entries().length === 1 ? 'entry' : 'entries' }}
+                </span>
+              </div>
+              <div *ngIf="entries().length; else emptyEntries" class="entries-table-container overflow-hidden rounded-2xl border-2 border-primary/10 bg-white shadow-lg">
                 <table mat-table [dataSource]="entries()" class="w-full text-sm">
-                <ng-container matColumnDef="hour">
-                  <th mat-header-cell *matHeaderCellDef class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Hour</th>
-                  <td mat-cell *matCellDef="let entry" class="px-4 py-3 font-semibold text-foreground">{{ entry.hour }}</td>
+                <ng-container matColumnDef="timeRange">
+                  <th mat-header-cell *matHeaderCellDef class="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-4 text-left text-[11px] font-bold uppercase tracking-wider text-primary border-b-2 border-primary/20">
+                    <div class="flex items-center gap-1">
+                      <mat-icon class="text-sm">schedule</mat-icon>
+                      Time Range
+                    </div>
+                  </th>
+                  <td mat-cell *matCellDef="let entry" class="px-4 py-4 font-bold text-foreground border-b border-gray-100">
+                    <div class="flex items-center gap-2">
+                      <mat-icon class="text-primary text-sm">access_time</mat-icon>
+                      {{ entry.timeStart }} - {{ entry.timeEnd }}
+                    </div>
+                  </td>
                 </ng-container>
 
-                <ng-container matColumnDef="activity">
-                  <th mat-header-cell *matHeaderCellDef class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Summary</th>
-                  <td mat-cell *matCellDef="let entry" class="px-4 py-3 text-muted-foreground">{{ entry.activity }}</td>
+                <ng-container matColumnDef="consultationPlace">
+                  <th mat-header-cell *matHeaderCellDef class="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-4 text-left text-[11px] font-bold uppercase tracking-wider text-primary border-b-2 border-primary/20">
+                    <div class="flex items-center gap-1">
+                      <mat-icon class="text-sm">location_on</mat-icon>
+                      Place
+                    </div>
+                  </th>
+                  <td mat-cell *matCellDef="let entry" class="px-4 py-4 text-muted-foreground border-b border-gray-100">{{ entry.consultationPlace }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="client">
+                  <th mat-header-cell *matHeaderCellDef class="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-4 text-left text-[11px] font-bold uppercase tracking-wider text-primary border-b-2 border-primary/20">
+                    <div class="flex items-center gap-1">
+                      <mat-icon class="text-sm">person</mat-icon>
+                      Client
+                    </div>
+                  </th>
+                  <td mat-cell *matCellDef="let entry" class="px-4 py-4 text-muted-foreground border-b border-gray-100">{{ entry.client }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="content">
+                  <th mat-header-cell *matHeaderCellDef class="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-4 text-left text-[11px] font-bold uppercase tracking-wider text-primary border-b-2 border-primary/20">
+                    <div class="flex items-center gap-1">
+                      <mat-icon class="text-sm">description</mat-icon>
+                      Content
+                    </div>
+                  </th>
+                  <td mat-cell *matCellDef="let entry" class="px-4 py-4 text-muted-foreground border-b border-gray-100">{{ entry.content }}</td>
                 </ng-container>
 
                 <ng-container matColumnDef="actions">
-                  <th mat-header-cell *matHeaderCellDef class="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Actions</th>
-                  <td mat-cell *matCellDef="let entry" class="px-4 py-3 text-right">
-                    <button mat-icon-button color="primary" type="button" (click)="editEntry(entry)" matTooltip="Edit entry">
-                      <mat-icon>edit</mat-icon>
+                  <th mat-header-cell *matHeaderCellDef class="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-4 text-right text-[11px] font-bold uppercase tracking-wider text-primary border-b-2 border-primary/20">Actions</th>
+                  <td mat-cell *matCellDef="let entry; let i = index" class="px-4 py-4 text-right border-b border-gray-100">
+                    <button mat-mini-fab color="primary" type="button" (click)="editEntry(entry, i)" matTooltip="Edit entry" class="mr-2 shadow-md hover:shadow-lg transition-shadow">
+                      <mat-icon class="text-lg">edit</mat-icon>
                     </button>
-                    <button mat-icon-button color="warn" type="button" (click)="removeEntry(entry.hour)" matTooltip="Remove entry">
+                    <button mat-mini-fab color="warn" type="button" (click)="removeEntry(i)" matTooltip="Remove entry" class="shadow-md hover:shadow-lg transition-shadow">
                       <mat-icon>delete</mat-icon>
                     </button>
                   </td>
@@ -176,10 +320,12 @@ interface DailyEntry { hour: string; activity: string; }
               </table>
               </div>
               <ng-template #emptyEntries>
-                <div class="empty-state rounded-2xl border border-dashed border-input bg-background/80 px-6 py-10 text-center text-sm text-muted-foreground">
-                  <mat-icon>event_note</mat-icon>
-                  <p class="font-medium">No entries yet</p>
-                  <p class="mt-1 text-xs">Add what you accomplished this hour so your lead sees steady progress.</p>
+                <div class="empty-state rounded-2xl border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/5 to-transparent px-8 py-12 text-center">
+                  <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+                    <mat-icon class="text-primary text-4xl">event_note</mat-icon>
+                  </div>
+                  <p class="font-bold text-lg text-foreground">No entries yet</p>
+                  <p class="mt-2 text-sm text-muted-foreground max-w-sm mx-auto">Start logging your activities using the form above. Use Quick Actions for faster entry!</p>
                 </div>
               </ng-template>
             </div>
@@ -187,18 +333,21 @@ interface DailyEntry { hour: string; activity: string; }
             <!-- Sidebar Section -->
             <div class="sidebar-section space-y-4">
               <!-- Progress Card -->
-              <mat-card class="stat-card border border-input bg-background/70">
-                <mat-card-content>
-                  <div class="flex items-center justify-between mb-2">
-                    <div class="flex items-center gap-2">
-                      <mat-icon class="text-primary">assessment</mat-icon>
-                      <span class="font-semibold text-foreground">Progress</span>
-                    </div>
-                    <span class="text-xs text-muted-foreground">{{ hoursLogged() }} / {{ timeSlots.length }}</span>
+              <mat-card class="stat-card border-2 border-primary/10 bg-gradient-to-br from-primary/5 to-white shadow-lg rounded-2xl overflow-hidden">
+                <div class="bg-gradient-to-r from-primary to-primary/80 px-4 py-3">
+                  <div class="flex items-center gap-2 text-white">
+                    <mat-icon>assessment</mat-icon>
+                    <span class="font-bold">Daily Progress</span>
                   </div>
-                  <mat-progress-bar class="mt-3 rounded-full" mode="determinate" [value]="completionPercent()" color="primary"></mat-progress-bar>
-                  <p class="mt-2 text-xs text-muted-foreground">{{ completionPercent() }}% of day captured</p>
-                  <mat-chip *ngIf="missingCount()" color="warn" selected class="mt-3">
+                </div>
+                <mat-card-content class="pt-4">
+                  <div class="flex items-center justify-between mb-3">
+                    <span class="text-sm font-medium text-muted-foreground">Time Logged</span>
+                    <span class="text-lg font-bold text-primary">{{ hoursLogged() }} / {{ timeSlots.length }}</span>
+                  </div>
+                  <mat-progress-bar class="rounded-full h-3 shadow-inner" mode="determinate" [value]="completionPercent()" color="primary"></mat-progress-bar>
+                  <p class="mt-3 text-center text-sm font-semibold text-primary">{{ completionPercent() }}% Complete</p>
+                  <mat-chip *ngIf="missingCount()" color="warn" selected class="mt-4 w-full justify-center shadow-md">
                     <mat-icon matChipAvatar>priority_high</mat-icon>
                     {{ missingCount() }} previous day(s) missing
                   </mat-chip>
@@ -206,33 +355,49 @@ interface DailyEntry { hour: string; activity: string; }
               </mat-card>
 
               <!-- Notes & Submit Card -->
-              <mat-card class="notes-card border border-input bg-background/70">
-                <mat-card-content>
-                  <div class="flex items-center gap-2 mb-3">
-                    <mat-icon class="text-primary">note_add</mat-icon>
-                    <span class="font-semibold text-foreground">Submit Report</span>
+              <mat-card class="notes-card border-2 border-primary/10 bg-white shadow-lg rounded-2xl overflow-hidden">
+                <div class="bg-gradient-to-r from-primary to-primary/80 px-4 py-3">
+                  <div class="flex items-center gap-2 text-white">
+                    <mat-icon>send</mat-icon>
+                    <span class="font-bold">Submit Report</span>
                   </div>
-                  <form class="space-y-3" [formGroup]="dailyMetaForm" (ngSubmit)="saveDailyReport()">
+                </div>
+                <mat-card-content class="pt-4">
+                  <form class="space-y-4" [formGroup]="dailyMetaForm" (ngSubmit)="saveDailyReport()">
                     <div class="notes-textarea-wrapper">
-                      <label class="text-xs font-medium text-muted-foreground mb-1 block">Notes for your lead</label>
+                      <label class="text-xs font-bold text-primary mb-2 flex items-center gap-1 uppercase">
+                        <mat-icon class="text-sm">edit_note</mat-icon>
+                        Notes for Manager
+                      </label>
                       <textarea
-                        class="notes-textarea-custom w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                        class="notes-textarea-custom w-full rounded-xl border-2 border-primary/20 bg-white px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all shadow-sm"
                         formControlName="notes"
-                        rows="3"
+                        rows="4"
                         placeholder="Highlights, blockers, or reminders..."
                       ></textarea>
-                      <span class="text-[11px] text-muted-foreground mt-1 block">Optional context for your manager</span>
+                      <span class="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
+                        <mat-icon class="text-xs">info</mat-icon>
+                        Optional context for your manager
+                      </span>
                     </div>
 
-                    <mat-checkbox formControlName="complete">
-                      <span class="font-medium">Mark day complete</span>
-                    </mat-checkbox>
-                    <p class="-mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                      Uncheck if you plan to add more context later today.
-                    </p>
+                    <div class="bg-primary/5 rounded-xl p-3 border border-primary/10">
+                      <mat-checkbox formControlName="complete" class="font-medium">
+                        <span class="font-semibold text-sm">Mark day complete</span>
+                      </mat-checkbox>
+                      <p class="mt-1 ml-8 text-[11px] leading-relaxed text-muted-foreground">
+                        Uncheck if you plan to add more later
+                      </p>
+                    </div>
 
-                    <button mat-flat-button color="primary" type="submit" class="w-full" [disabled]="dailyReportSaving() || !entries().length">
-                      <mat-icon class="mr-1">{{ dailyReportSaving() ? 'hourglass_empty' : 'save' }}</mat-icon>
+                    <button 
+                      mat-raised-button 
+                      color="primary" 
+                      type="submit" 
+                      class="w-full shadow-lg hover:shadow-xl transition-all py-6 text-base font-bold"
+                      [disabled]="dailyReportSaving() || !entries().length"
+                    >
+                      <mat-icon class="mr-2">{{ dailyReportSaving() ? 'hourglass_empty' : 'cloud_upload' }}</mat-icon>
                       <ng-container *ngIf="dailyReportSaving(); else saveLabel">Saving...</ng-container>
                       <ng-template #saveLabel>Save Daily Report</ng-template>
                     </button>
@@ -323,21 +488,35 @@ interface DailyEntry { hour: string; activity: string; }
                               <th class="px-4 py-2 text-left">
                                 <div class="flex items-center gap-1">
                                   <mat-icon class="text-sm">schedule</mat-icon>
-                                  Hour
+                                  Time
+                                </div>
+                              </th>
+                              <th class="px-4 py-2 text-left">
+                                <div class="flex items-center gap-1">
+                                  <mat-icon class="text-sm">place</mat-icon>
+                                  Consultation Place
+                                </div>
+                              </th>
+                              <th class="px-4 py-2 text-left">
+                                <div class="flex items-center gap-1">
+                                  <mat-icon class="text-sm">person</mat-icon>
+                                  Client
                                 </div>
                               </th>
                               <th class="px-4 py-2 text-left">
                                 <div class="flex items-center gap-1">
                                   <mat-icon class="text-sm">description</mat-icon>
-                                  Summary
+                                  Content
                                 </div>
                               </th>
                             </tr>
                           </thead>
                           <tbody>
                             <tr *ngFor="let entry of report.entries" class="border-t border-border text-foreground">
-                              <td class="px-4 py-2 font-semibold">{{ entry.hour }}</td>
-                              <td class="px-4 py-2 text-muted-foreground">{{ entry.activity }}</td>
+                              <td class="px-4 py-2 font-semibold">{{ entry.timeStart }} - {{ entry.timeEnd }}</td>
+                              <td class="px-4 py-2 text-muted-foreground">{{ entry.consultationPlace }}</td>
+                              <td class="px-4 py-2 text-muted-foreground">{{ entry.client }}</td>
+                              <td class="px-4 py-2 text-muted-foreground">{{ entry.content }}</td>
                             </tr>
                           </tbody>
                         </table>
@@ -386,10 +565,12 @@ export class EmployeeDailyReportComponent implements OnInit {
   });
   readonly todayKey = toDateKey(new Date());
   readonly todayLabel = formatDateLabel(this.todayKey);
+  readonly selectedDate = signal<string>(toDateKey(new Date())); // Selected date for the report
+  readonly selectedDateLabel = computed(() => formatDateLabel(this.selectedDate()));
 
-  readonly timeSlots: string[] = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00'];
-  readonly entries = signal<DailyEntry[]>([]);
-  readonly editingHour = signal<string | null>(null);
+  readonly timeSlots: string[] = ['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00','18:30','19:00'];
+  readonly entries = signal<DailyReportEntry[]>([]);
+  readonly editingIndex = signal<number | null>(null);
   readonly dailyReportLoading = signal(false);
   readonly dailyReportSaving = signal(false);
   readonly dailyReportError = signal<string | null>(null);
@@ -400,7 +581,7 @@ export class EmployeeDailyReportComponent implements OnInit {
   readonly pastReportsLoading = signal(false);
   readonly pastReportsError = signal<string | null>(null);
 
-  readonly displayedColumns = ['hour', 'activity', 'actions'];
+  readonly displayedColumns = ['timeRange', 'consultationPlace', 'client', 'content', 'actions'];
 
   readonly hoursLogged = computed(() => this.entries().length);
   readonly completionPercent = computed(() => {
@@ -408,8 +589,36 @@ export class EmployeeDailyReportComponent implements OnInit {
   });
   readonly missingCount = computed(() => this.missingReportAlerts().length);
 
-  readonly entryForm = this.fb.nonNullable.group({ hour: this.timeSlots[0], activity: '' });
+  readonly entryForm = this.fb.nonNullable.group({ 
+    timeStart: this.timeSlots[0], 
+    timeEnd: this.timeSlots[1],
+    consultationPlace: '',
+    client: '',
+    content: ''
+  });
   readonly dailyMetaForm = this.fb.nonNullable.group({ notes: '', complete: true });
+
+  // Quick time presets for common time blocks
+  readonly timePresets = [
+    { label: '1 Hour', duration: 2 }, // 2 slots = 1 hour
+    { label: '2 Hours', duration: 4 },
+    { label: '3 Hours', duration: 6 },
+    { label: '4 Hours', duration: 8 },
+    { label: 'Half Day (4h)', duration: 8 },
+    { label: 'Full Day (8h)', duration: 16 },
+  ];
+
+  // Activity templates for quick entry
+  readonly activityTemplates = signal<Array<{name: string; consultationPlace: string; client: string; content: string}>>([
+    { name: 'Meeting', consultationPlace: 'Conference Room', client: '', content: 'Team meeting and discussion' },
+    { name: 'Client Call', consultationPlace: 'Office', client: '', content: 'Client consultation call' },
+    { name: 'Development', consultationPlace: 'Office', client: '', content: 'Software development and coding' },
+    { name: 'Training', consultationPlace: 'Training Room', client: '', content: 'Training session' },
+    { name: 'Documentation', consultationPlace: 'Office', client: '', content: 'Documentation and reporting' },
+  ]);
+
+  readonly showTemplates = signal(false);
+  readonly showQuickTime = signal(false);
 
   constructor() {
     effect(
@@ -417,8 +626,9 @@ export class EmployeeDailyReportComponent implements OnInit {
         const id = this.employeeId();
         const source = this.employeeSource();
         const profile = this.profile();
+        const date = this.selectedDate(); // Track selected date changes
 
-        console.log('[EmployeeDailyReport] effect triggered', { id, source, profile });
+        console.log('[EmployeeDailyReport] effect triggered', { id, source, profile, date });
 
         if (!id) {
           this.dailyReportError.set('No employee ID configured.');
@@ -429,7 +639,7 @@ export class EmployeeDailyReportComponent implements OnInit {
         }
 
         this.dailyReportError.set(null);
-        console.log('[EmployeeDailyReport] loading data for', { id, source });
+        console.log('[EmployeeDailyReport] loading data for', { id, source, date });
         this.loadDailyReport(id, source);
         this.refreshMissingDailyReportAlerts(id, source);
         this.loadPastReports(id, source);
@@ -445,7 +655,7 @@ export class EmployeeDailyReportComponent implements OnInit {
     const targetSource = source ?? this.employeeSource();
     if (!targetId) { this.dailyReportError.set('No employee ID configured.'); return; }
     this.dailyReportLoading.set(true); this.dailyReportError.set(null);
-    this.reportingService.getDailyReport(targetId, this.todayKey, targetSource).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.reportingService.getDailyReport(targetId, this.selectedDate(), targetSource).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (record) => {
         if (record) {
           const entries = sortEntries(record.entries ?? []); this.entries.set(entries);
@@ -503,7 +713,7 @@ export class EmployeeDailyReportComponent implements OnInit {
     const entries = sortEntries(this.entries()); if (!entries.length) { this.dailyReportError.set('Add at least one hourly entry before saving.'); return; }
     const meta = this.dailyMetaForm.getRawValue();
     this.dailyReportSaving.set(true); this.dailyReportError.set(null); this.dailyReportNotice.set(null);
-    const payload: SaveDailyReportPayload = { date: this.todayKey, entries, submittedBy: this.profile()?.fullName ?? null, notes: meta.notes?.trim() ? meta.notes.trim() : null, complete: !!meta.complete };
+    const payload: SaveDailyReportPayload = { date: this.selectedDate(), entries, submittedBy: this.profile()?.fullName ?? null, notes: meta.notes?.trim() ? meta.notes.trim() : null, complete: !!meta.complete };
     this.reportingService.saveDailyReport(this.employeeId(), payload, this.employeeSource()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
   next: () => { this.dailyReportSaving.set(false); this.dailyReportNotice.set('Daily report saved.'); this.lastDailyReportSavedAt.set(new Date()); this.refreshMissingDailyReportAlerts(); this.loadPastReports(); },
       error: () => { this.dailyReportSaving.set(false); this.dailyReportError.set('Failed to save daily report. Try again.'); },
@@ -511,16 +721,164 @@ export class EmployeeDailyReportComponent implements OnInit {
   }
 
   submitEntry(): void {
-    const { hour, activity } = this.entryForm.getRawValue(); const trimmed = activity.trim(); if (!trimmed) return;
-    const originalHour = this.editingHour(); const nextEntry: DailyEntry = { hour, activity: trimmed };
-    this.entries.update((items) => { const filtered = items.filter((item) => item.hour !== nextEntry.hour && item.hour !== originalHour); return [...filtered, nextEntry].sort((a, b) => a.hour.localeCompare(b.hour)); });
-    this.resetForm();
+    const { timeStart, timeEnd, consultationPlace, client, content } = this.entryForm.getRawValue(); 
+    const trimmedContent = content.trim(); 
+    if (!trimmedContent) return;
+    
+    const editingIdx = this.editingIndex(); 
+    const nextEntry: DailyReportEntry = { 
+      timeStart, 
+      timeEnd,
+      consultationPlace: consultationPlace.trim(), 
+      client: client.trim(), 
+      content: trimmedContent 
+    };
+    
+    this.entries.update((items) => { 
+      if (editingIdx !== null) {
+        // Update existing entry
+        const updated = [...items];
+        updated[editingIdx] = nextEntry;
+        return updated.sort((a, b) => a.timeStart.localeCompare(b.timeStart));
+      } else {
+        // Add new entry
+        return [...items, nextEntry].sort((a, b) => a.timeStart.localeCompare(b.timeStart));
+      }
+    });
+    this.resetFormWithAutoTime();
+  }
+
+  // Auto-fill next time slot based on last entry
+  resetFormWithAutoTime(): void {
+    const lastEntry = this.entries()[this.entries().length - 1];
+    let nextStartIdx = 0;
+    
+    if (lastEntry) {
+      const endIdx = this.timeSlots.indexOf(lastEntry.timeEnd);
+      nextStartIdx = endIdx >= 0 && endIdx < this.timeSlots.length - 1 ? endIdx : 0;
+    }
+    
+    const nextEndIdx = Math.min(nextStartIdx + 2, this.timeSlots.length - 1);
+    
+    this.editingIndex.set(null);
+    this.entryForm.setValue({
+      timeStart: this.timeSlots[nextStartIdx],
+      timeEnd: this.timeSlots[nextEndIdx],
+      consultationPlace: lastEntry?.consultationPlace || '',
+      client: lastEntry?.client || '',
+      content: ''
+    });
+  }
+
+  // Apply quick time preset
+  applyTimePreset(preset: { label: string; duration: number }): void {
+    const currentStartIdx = this.timeSlots.indexOf(this.entryForm.value.timeStart || this.timeSlots[0]);
+    const endIdx = Math.min(currentStartIdx + preset.duration, this.timeSlots.length - 1);
+    
+    this.entryForm.patchValue({
+      timeEnd: this.timeSlots[endIdx]
+    });
+    this.showQuickTime.set(false);
+  }
+
+  // Apply activity template
+  applyTemplate(template: {name: string; consultationPlace: string; client: string; content: string}): void {
+    this.entryForm.patchValue({
+      consultationPlace: template.consultationPlace,
+      client: template.client,
+      content: template.content
+    });
+    this.showTemplates.set(false);
+  }
+
+  // Copy entries from yesterday
+  copyFromYesterday(): void {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayKey = toDateKey(yesterday);
+    
+    this.reportingService
+      .getDailyReport(this.employeeId(), yesterdayKey, this.employeeSource())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (record) => {
+          if (record?.entries?.length) {
+            const copiedEntries = record.entries.map(e => ({...e}));
+            this.entries.set(sortEntries(copiedEntries));
+            this.dailyReportNotice.set(`Copied ${copiedEntries.length} entries from yesterday`);
+            setTimeout(() => this.dailyReportNotice.set(null), 3000);
+          } else {
+            this.dailyReportError.set('No entries found for yesterday');
+            setTimeout(() => this.dailyReportError.set(null), 3000);
+          }
+        },
+        error: () => {
+          this.dailyReportError.set('Failed to load yesterday\'s entries');
+          setTimeout(() => this.dailyReportError.set(null), 3000);
+        }
+      });
+  }
+
+  // Duplicate last entry
+  duplicateLastEntry(): void {
+    const entries = this.entries();
+    if (entries.length === 0) return;
+    
+    const lastEntry = entries[entries.length - 1];
+    const lastEndIdx = this.timeSlots.indexOf(lastEntry.timeEnd);
+    const newStartIdx = lastEndIdx >= 0 && lastEndIdx < this.timeSlots.length - 1 ? lastEndIdx : 0;
+    const newEndIdx = Math.min(newStartIdx + 2, this.timeSlots.length - 1);
+    
+    this.entryForm.setValue({
+      timeStart: this.timeSlots[newStartIdx],
+      timeEnd: this.timeSlots[newEndIdx],
+      consultationPlace: lastEntry.consultationPlace,
+      client: lastEntry.client,
+      content: lastEntry.content
+    });
+  }
+
+  changeDate(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const newDate = input.value; // Format: YYYY-MM-DD
+    if (newDate) {
+      this.selectedDate.set(newDate);
+    }
+  }
+
+  goToToday(): void {
+    this.selectedDate.set(this.todayKey);
   }
 
   clearEntries(): void { this.entries.set([]); this.resetForm(); this.dailyMetaForm.setValue({ notes: '', complete: true }); }
-  editEntry(entry: DailyEntry): void { this.editingHour.set(entry.hour); this.entryForm.setValue({ hour: entry.hour, activity: entry.activity }); }
-  removeEntry(hour: string): void { this.entries.update((items) => items.filter((item) => item.hour !== hour)); if (this.editingHour() === hour) this.resetForm(); }
-  resetForm(): void { this.editingHour.set(null); this.entryForm.setValue({ hour: this.timeSlots[0], activity: '' }); }
+  editEntry(entry: DailyReportEntry, index: number): void { 
+    this.editingIndex.set(index); 
+    this.entryForm.setValue({ 
+      timeStart: entry.timeStart, 
+      timeEnd: entry.timeEnd,
+      consultationPlace: entry.consultationPlace, 
+      client: entry.client, 
+      content: entry.content 
+    }); 
+  }
+  removeEntry(index: number): void { 
+    this.entries.update((items) => items.filter((_, i) => i !== index)); 
+    if (this.editingIndex() === index) this.resetForm(); 
+  }
+  resetForm(): void { 
+    this.editingIndex.set(null); 
+    this.entryForm.setValue({ 
+      timeStart: this.timeSlots[0], 
+      timeEnd: this.timeSlots[1],
+      consultationPlace: '', 
+      client: '', 
+      content: '' 
+    }); 
+  }
+
+  cancelEdit(): void {
+    this.resetForm();
+  }
 
   trackReport(_index: number, report: DailyReportRecord): string { return report.id; }
   formatDate(dateKey: string): string { return formatDateLabel(dateKey); }
@@ -592,54 +950,94 @@ export class EmployeeDailyReportComponent implements OnInit {
     </h2>
     <mat-dialog-content class="dialog-content max-h-[70vh]">
       <form [formGroup]="editForm" class="space-y-4">
-        <div class="entry-form-dialog grid gap-4 md:grid-cols-[minmax(0,200px)_1fr_auto]">
+        <div class="entry-form-dialog grid gap-3 md:grid-cols-[minmax(0,100px)_minmax(0,100px)_1fr_1fr_2fr_auto]">
           <div class="form-field-wrapper">
-            <label class="text-xs font-medium text-muted-foreground mb-1 block">Hour</label>
+            <label class="text-xs font-medium text-muted-foreground mb-1 block">Time Start</label>
             <select
               class="custom-select w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-              formControlName="hour"
+              formControlName="timeStart"
             >
               <option *ngFor="let slot of data.timeSlots" [value]="slot">{{ slot }}</option>
             </select>
           </div>
 
           <div class="form-field-wrapper">
-            <label class="text-xs font-medium text-muted-foreground mb-1 block">Activity</label>
-            <textarea
-              class="notes-textarea-custom w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-              formControlName="activity"
-              rows="2"
-              placeholder="What did you work on?"
-            ></textarea>
+            <label class="text-xs font-medium text-muted-foreground mb-1 block">Time End</label>
+            <select
+              class="custom-select w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+              formControlName="timeEnd"
+            >
+              <option *ngFor="let slot of data.timeSlots" [value]="slot">{{ slot }}</option>
+            </select>
+          </div>
+
+          <div class="form-field-wrapper">
+            <label class="text-xs font-medium text-muted-foreground mb-1 block">Consultation Place</label>
+            <input
+              type="text"
+              class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+              formControlName="consultationPlace"
+              placeholder="Location..."
+            />
+          </div>
+
+          <div class="form-field-wrapper">
+            <label class="text-xs font-medium text-muted-foreground mb-1 block">Client</label>
+            <input
+              type="text"
+              class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+              formControlName="client"
+              placeholder="Client name..."
+            />
+          </div>
+
+          <div class="form-field-wrapper">
+            <label class="text-xs font-medium text-muted-foreground mb-1 block">Content</label>
+            <input
+              type="text"
+              class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+              formControlName="content"
+              placeholder="Work details..."
+            />
           </div>
 
           <div class="flex items-end">
-            <button mat-flat-button color="primary" type="button" (click)="addOrUpdateEntry()" [disabled]="!editForm.get('activity')?.value?.trim()">
-              <mat-icon class="mr-1">{{ editingHour ? 'edit' : 'add' }}</mat-icon>
-              {{ editingHour ? 'Update' : 'Add' }}
+            <button mat-flat-button color="primary" type="button" (click)="addOrUpdateEntry()" [disabled]="!editForm.get('content')?.value?.trim()">
+              <mat-icon class="mr-1">{{ editingIndex !== null ? 'edit' : 'add' }}</mat-icon>
+              {{ editingIndex !== null ? 'Update' : 'Add' }}
             </button>
           </div>
         </div>
 
         <div class="overflow-hidden rounded-2xl border border-input bg-background/80">
           <table mat-table [dataSource]="entries" class="w-full text-sm" *ngIf="entries.length; else noEntries">
-            <ng-container matColumnDef="hour">
-              <th mat-header-cell *matHeaderCellDef class="px-4 py-3 text-left text-xs font-semibold">Hour</th>
-              <td mat-cell *matCellDef="let entry" class="px-4 py-3 font-semibold">{{ entry.hour }}</td>
+            <ng-container matColumnDef="timeRange">
+              <th mat-header-cell *matHeaderCellDef class="px-4 py-3 text-left text-xs font-semibold">Time Range</th>
+              <td mat-cell *matCellDef="let entry" class="px-4 py-3 font-semibold">{{ entry.timeStart }} - {{ entry.timeEnd }}</td>
             </ng-container>
 
-            <ng-container matColumnDef="activity">
-              <th mat-header-cell *matHeaderCellDef class="px-4 py-3 text-left text-xs font-semibold">Summary</th>
-              <td mat-cell *matCellDef="let entry" class="px-4 py-3 text-sm">{{ entry.activity }}</td>
+            <ng-container matColumnDef="consultationPlace">
+              <th mat-header-cell *matHeaderCellDef class="px-4 py-3 text-left text-xs font-semibold">Consultation Place</th>
+              <td mat-cell *matCellDef="let entry" class="px-4 py-3 text-sm">{{ entry.consultationPlace }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="client">
+              <th mat-header-cell *matHeaderCellDef class="px-4 py-3 text-left text-xs font-semibold">Client</th>
+              <td mat-cell *matCellDef="let entry" class="px-4 py-3 text-sm">{{ entry.client }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="content">
+              <th mat-header-cell *matHeaderCellDef class="px-4 py-3 text-left text-xs font-semibold">Content</th>
+              <td mat-cell *matCellDef="let entry" class="px-4 py-3 text-sm">{{ entry.content }}</td>
             </ng-container>
 
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef class="px-4 py-3 text-right text-xs font-semibold">Actions</th>
-              <td mat-cell *matCellDef="let entry" class="px-4 py-3 text-right">
-                <button mat-icon-button color="primary" (click)="editEntry(entry)">
+              <td mat-cell *matCellDef="let entry; let i = index" class="px-4 py-3 text-right">
+                <button mat-icon-button color="primary" (click)="editEntry(entry, i)">
                   <mat-icon>edit</mat-icon>
                 </button>
-                <button mat-icon-button color="warn" (click)="removeEntry(entry.hour)">
+                <button mat-icon-button color="warn" (click)="removeEntry(i)">
                   <mat-icon>delete</mat-icon>
                 </button>
               </td>
@@ -686,13 +1084,16 @@ export class EditPastReportDialog {
   private readonly dialogRef = inject(MatDialogRef<EditPastReportDialog>);
   private readonly fb = inject(FormBuilder);
 
-  entries: DailyEntry[] = [...this.data.report.entries];
-  editingHour: string | null = null;
-  displayedColumns = ['hour', 'activity', 'actions'];
+  entries: DailyReportEntry[] = [...this.data.report.entries];
+  editingIndex: number | null = null;
+  displayedColumns = ['timeRange', 'consultationPlace', 'client', 'content', 'actions'];
 
   editForm = this.fb.nonNullable.group({
-    hour: [this.data.timeSlots[0]],
-    activity: [''],
+    timeStart: [this.data.timeSlots[0]],
+    timeEnd: [this.data.timeSlots[1]],
+    consultationPlace: [''],
+    client: [''],
+    content: [''],
     notes: [this.data.report.notes ?? ''],
     complete: [this.data.report.complete],
   });
@@ -702,32 +1103,48 @@ export class EditPastReportDialog {
   }
 
   addOrUpdateEntry(): void {
-    const { hour, activity } = this.editForm.getRawValue();
-    const trimmed = activity.trim();
+    const { timeStart, timeEnd, consultationPlace, client, content } = this.editForm.getRawValue();
+    const trimmed = content.trim();
     if (!trimmed) return;
 
-    const originalHour = this.editingHour;
-    const nextEntry: DailyEntry = { hour, activity: trimmed };
+    const editingIdx = this.editingIndex;
+    const nextEntry: DailyReportEntry = { 
+      timeStart, 
+      timeEnd,
+      consultationPlace: consultationPlace.trim(), 
+      client: client.trim(), 
+      content: trimmed 
+    };
 
-    this.entries = this.entries
-      .filter((item) => item.hour !== nextEntry.hour && item.hour !== originalHour)
-      .concat(nextEntry)
-      .sort((a, b) => a.hour.localeCompare(b.hour));
+    if (editingIdx !== null) {
+      // Update existing entry
+      this.entries[editingIdx] = nextEntry;
+      this.entries = [...this.entries].sort((a, b) => a.timeStart.localeCompare(b.timeStart));
+    } else {
+      // Add new entry
+      this.entries = [...this.entries, nextEntry].sort((a, b) => a.timeStart.localeCompare(b.timeStart));
+    }
 
-    this.editingHour = null;
-    this.editForm.patchValue({ hour: this.data.timeSlots[0], activity: '' });
+    this.editingIndex = null;
+    this.editForm.patchValue({ timeStart: this.data.timeSlots[0], timeEnd: this.data.timeSlots[1], consultationPlace: '', client: '', content: '' });
   }
 
-  editEntry(entry: DailyEntry): void {
-    this.editingHour = entry.hour;
-    this.editForm.patchValue({ hour: entry.hour, activity: entry.activity });
+  editEntry(entry: DailyReportEntry, index: number): void {
+    this.editingIndex = index;
+    this.editForm.patchValue({ 
+      timeStart: entry.timeStart, 
+      timeEnd: entry.timeEnd,
+      consultationPlace: entry.consultationPlace, 
+      client: entry.client, 
+      content: entry.content 
+    });
   }
 
-  removeEntry(hour: string): void {
-    this.entries = this.entries.filter((item) => item.hour !== hour);
-    if (this.editingHour === hour) {
-      this.editingHour = null;
-      this.editForm.patchValue({ hour: this.data.timeSlots[0], activity: '' });
+  removeEntry(index: number): void {
+    this.entries = this.entries.filter((_, i) => i !== index);
+    if (this.editingIndex === index) {
+      this.editingIndex = null;
+      this.editForm.patchValue({ timeStart: this.data.timeSlots[0], timeEnd: this.data.timeSlots[1], consultationPlace: '', client: '', content: '' });
     }
   }
 
@@ -748,4 +1165,4 @@ export class EditPastReportDialog {
 
 function toDateKey(date: Date): string { return date.toISOString().slice(0, 10); }
 function formatDateLabel(dateKey: string): string { const parsed = new Date(`${dateKey}T00:00:00Z`); if (Number.isNaN(parsed.getTime())) return dateKey; return parsed.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }); }
-function sortEntries(entries: DailyReportEntry[]): DailyReportEntry[] { return [...entries].sort((a, b) => a.hour.localeCompare(b.hour)); }
+function sortEntries(entries: DailyReportEntry[]): DailyReportEntry[] { return [...entries].sort((a, b) => a.timeStart.localeCompare(b.timeStart)); }

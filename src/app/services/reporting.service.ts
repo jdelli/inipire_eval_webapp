@@ -16,8 +16,11 @@ import {
 import { from, Observable } from 'rxjs';
 
 export interface DailyReportEntry {
-  hour: string;
-  activity: string;
+  timeStart: string;
+  timeEnd: string;
+  consultationPlace: string;
+  client: string;
+  content: string;
 }
 
 export interface DailyReportRecord {

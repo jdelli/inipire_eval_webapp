@@ -1,50 +1,106 @@
-<div class="min-h-screen bg-muted/40 text-sm text-foreground antialiased">
-  <mat-toolbar class="sticky top-0 z-30 border-b bg-background/90 backdrop-blur" color="transparent">
-    <div class="flex items-center gap-3" *ngIf="profile() as currentProfile">
-      <button mat-mini-fab color="primary" class="shadow-none">
-        {{ avatarInitial() }}
-      </button>
-      <div>
-        <p class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Employee workspace</p>
-        <h1 class="text-xl font-semibold tracking-tight md:text-2xl">{{ currentProfile.fullName }}</h1>
+<div class="min-h-screen bg-gradient-to-br from-muted/30 via-background to-muted/20 text-sm text-foreground antialiased">
+  <!-- Enhanced Professional Header -->
+  <mat-toolbar class="sticky top-0 z-30 border-b-2 border-primary/10 bg-white/95 backdrop-blur-xl shadow-lg" color="transparent">
+    <div class="w-full flex items-center justify-between py-2">
+      <!-- Left Section: User Info -->
+      <div class="flex items-center gap-4" *ngIf="profile() as currentProfile">
+        <div class="relative">
+          <button mat-fab color="primary" class="shadow-xl hover:shadow-2xl transition-shadow">
+            <span class="text-2xl font-bold">{{ avatarInitial() }}</span>
+          </button>
+          <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white shadow-md online-indicator"></div>
+        </div>
+        <div class="flex flex-col">
+          <div class="flex items-center gap-2">
+            <mat-icon class="text-primary text-base">work</mat-icon>
+            <p class="text-[10px] font-bold uppercase tracking-widest text-primary">Executive Workspace</p>
+          </div>
+          <h1 class="text-xl font-bold tracking-tight md:text-2xl bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+            {{ currentProfile.fullName }}
+          </h1>
+          <div class="flex items-center gap-2 mt-0.5">
+            <span class="text-[10px] text-muted-foreground">{{ todayLabel }}</span>
+            <span class="w-1 h-1 bg-muted-foreground/50 rounded-full"></span>
+            <span class="text-[10px] font-medium text-primary">{{ currentProfile.department || 'Team Member' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center/Right Section: Stats and Actions -->
+      <div class="flex items-center gap-3 ml-auto">
+        <!-- Stats Chips (Desktop) -->
+        <div class="hidden items-center gap-2 lg:flex" *ngIf="!dailyReportLoading()">
+          <div class="bg-gradient-to-r from-primary/10 to-primary/5 rounded-2xl px-4 py-2 border-2 border-primary/20 shadow-sm">
+            <div class="flex items-center gap-2">
+              <mat-icon class="text-primary text-lg">schedule</mat-icon>
+              <div class="flex flex-col">
+                <span class="text-xs font-bold text-primary">{{ hoursLogged() }}/{{ timeSlots.length }}</span>
+                <span class="text-[9px] text-muted-foreground uppercase tracking-wide">Hours Logged</span>
+              </div>
+            </div>
+          </div>
+          
+          <div *ngIf="missingCount()" 
+               class="bg-gradient-to-r from-red-50 to-red-50/50 rounded-2xl px-4 py-2 border-2 border-red-200 shadow-sm animate-pulse"
+               matTooltip="Missing submissions for {{ missingReportAlerts().join(', ') }}">
+            <div class="flex items-center gap-2">
+              <mat-icon class="text-red-600 text-lg">priority_high</mat-icon>
+              <div class="flex flex-col">
+                <span class="text-xs font-bold text-red-600">{{ missingCount() }}</span>
+                <span class="text-[9px] text-red-600/70 uppercase tracking-wide">Missing</span>
+              </div>
+            </div>
+          </div>
+
+          <div *ngIf="lastDailyReportSavedAt()" class="bg-gradient-to-r from-green-50 to-green-50/50 rounded-2xl px-4 py-2 border-2 border-green-200 shadow-sm">
+            <div class="flex items-center gap-2">
+              <mat-icon class="text-green-600 text-lg">check_circle</mat-icon>
+              <div class="flex flex-col">
+                <span class="text-xs font-bold text-green-600">{{ lastDailyReportSavedAt() | date: 'shortTime' }}</span>
+                <span class="text-[9px] text-green-600/70 uppercase tracking-wide">Last Saved</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Stats Button -->
+        <button mat-icon-button class="lg:hidden" [matMenuTriggerFor]="summaryMenu" *ngIf="!dailyReportLoading()" aria-label="Open daily summary">
+          <mat-icon class="text-primary">insights</mat-icon>
+        </button>
+
+        <!-- Profile Menu Button -->
+        <ng-container *ngIf="profile() as currentProfile">
+          <button mat-stroked-button [matMenuTriggerFor]="profileMenu" 
+                  class="hidden items-center gap-2 rounded-2xl border-2 border-primary/20 bg-gradient-to-r from-primary/5 to-transparent px-4 py-2 text-sm font-bold text-primary hover:border-primary/40 hover:shadow-md transition-all md:flex">
+            <mat-icon class="text-lg">account_circle</mat-icon>
+            <span class="truncate max-w-[8rem]">{{ currentProfile.fullName }}</span>
+            <mat-icon>expand_more</mat-icon>
+          </button>
+          <button mat-icon-button class="md:hidden" [matMenuTriggerFor]="profileMenu" aria-label="Profile menu">
+            <mat-icon class="text-primary">account_circle</mat-icon>
+          </button>
+        </ng-container>
       </div>
     </div>
-    <span class="flex-1"></span>
-    <div class="hidden items-center gap-3 md:flex" *ngIf="!dailyReportLoading()">
-      <mat-chip color="primary" selected>
-        <mat-icon matChipAvatar>schedule</mat-icon>
-        {{ hoursLogged() }} / {{ timeSlots.length }} hrs logged
-      </mat-chip>
-      <mat-chip *ngIf="missingCount()" color="warn" selected matTooltip="Missing submissions for {{ missingReportAlerts().join(', ') }}">
-        <mat-icon matChipAvatar>priority_high</mat-icon>
-        {{ missingCount() }} missing
-      </mat-chip>
-      <span class="text-xs text-muted-foreground" *ngIf="lastDailyReportSavedAt()">
-        Saved {{ lastDailyReportSavedAt() | date: 'shortTime' }}
-      </span>
-    </div>
-    <button mat-icon-button class="md:hidden" [matMenuTriggerFor]="summaryMenu" *ngIf="!dailyReportLoading()" aria-label="Open daily summary">
-      <mat-icon>insights</mat-icon>
-    </button>
-    <ng-container *ngIf="profile() as currentProfile">
-      <button mat-button [matMenuTriggerFor]="profileMenu" class="hidden items-center gap-2 rounded-full border border-input bg-background px-3 py-1 text-sm font-medium text-foreground md:flex">
-        <span class="truncate max-w-[8rem]">{{ currentProfile.fullName }}</span>
-        <mat-icon>expand_more</mat-icon>
-      </button>
-      <button mat-icon-button class="md:hidden" [matMenuTriggerFor]="profileMenu" aria-label="Profile menu">
-        <mat-icon>account_circle</mat-icon>
-      </button>
-    </ng-container>
   </mat-toolbar>
 
-  <mat-progress-bar *ngIf="dailyReportLoading()" mode="indeterminate" color="primary"></mat-progress-bar>
-
-  <div class="border-b bg-background/95 px-4 py-3 text-sm text-muted-foreground md:px-8 lg:px-12">
-    {{ tagline() }}
+  <!-- Enhanced Progress Bar -->
+  <div *ngIf="dailyReportLoading()" class="relative">
+    <mat-progress-bar mode="indeterminate" color="primary" class="h-1"></mat-progress-bar>
+    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-primary/20 to-transparent animate-pulse"></div>
   </div>
 
-  <section class="border-b bg-background/90 px-4 py-3 md:px-8 lg:px-12">
-    <nav mat-tab-nav-bar class="overflow-x-auto">
+  <!-- Enhanced Tagline Section -->
+  <div class="border-b-2 border-primary/10 bg-gradient-to-r from-primary/5 via-transparent to-primary/5 px-4 py-4 text-sm md:px-8 lg:px-12 shadow-sm">
+    <div class="flex items-center gap-3">
+      <mat-icon class="text-primary text-xl">info</mat-icon>
+      <p class="text-muted-foreground font-medium">{{ tagline() }}</p>
+    </div>
+  </div>
+
+  <!-- Enhanced Navigation Section -->
+  <section class="border-b-2 border-primary/10 bg-white px-4 py-4 md:px-8 lg:px-12 shadow-sm">
+    <nav mat-tab-nav-bar class="overflow-x-auto" [tabPanel]="tabPanel">
       <a
         mat-tab-link
         *ngFor="let item of navItems; trackBy: trackByRoute"
@@ -55,11 +111,15 @@
         [active]="activeLink.isActive"
         [matTooltip]="item.description"
         matTooltipPosition="below"
+        class="nav-link-enhanced"
       >
-        <mat-icon>{{ navIcon(item.icon) }}</mat-icon>
-        <span class="ml-2 font-medium">{{ item.label }}</span>
+        <div class="flex items-center gap-2 px-2">
+          <mat-icon class="text-xl">{{ navIcon(item.icon) }}</mat-icon>
+          <span class="font-bold text-sm">{{ item.label }}</span>
+        </div>
       </a>
     </nav>
+    <mat-tab-nav-panel #tabPanel></mat-tab-nav-panel>
   </section>
 
   <main class="px-4 py-6 md:px-8 lg:px-12">
@@ -72,69 +132,123 @@
       </mat-card>
     </div>
 
-    <div class="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      <mat-card class="bg-card/90 shadow-sm">
-        <mat-card-header>
-          <mat-card-title>Daily progress</mat-card-title>
-          <mat-card-subtitle>{{ todayLabel }}</mat-card-subtitle>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="flex items-baseline justify-between text-sm">
-            <span class="font-semibold text-foreground">{{ hoursLogged() }} logged</span>
-            <span class="text-muted-foreground">{{ timeSlots.length - hoursLogged() }} remaining</span>
+    <div class="mb-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+      <!-- Daily Progress Card -->
+      <mat-card class="bg-gradient-to-br from-white to-primary/5 shadow-lg hover:shadow-xl transition-all border-2 border-primary/10 rounded-2xl overflow-hidden">
+        <div class="bg-gradient-to-r from-primary to-primary/80 px-6 py-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2 text-white">
+              <mat-icon class="text-2xl">assessment</mat-icon>
+              <mat-card-title class="text-white font-bold">Daily Progress</mat-card-title>
+            </div>
+            <div class="bg-white/20 rounded-full px-3 py-1">
+              <span class="text-white text-xs font-bold">{{ todayLabel }}</span>
+            </div>
           </div>
-          <mat-progress-bar class="mt-4 rounded-full" mode="determinate" [value]="completionPercent()"></mat-progress-bar>
-          <p class="mt-3 text-xs text-muted-foreground">{{ completionPercent() }}% of your day documented.</p>
-          <div *ngIf="lastDailyReportSavedAt()" class="mt-3 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary">
-            <mat-icon class="text-base">check_circle</mat-icon>
-            Saved {{ lastDailyReportSavedAt() | date: 'shortTime' }}
+        </div>
+        <mat-card-content class="pt-6">
+          <div class="flex items-center justify-between mb-4">
+            <div class="text-center">
+              <div class="text-3xl font-bold text-primary">{{ hoursLogged() }}</div>
+              <div class="text-xs text-muted-foreground uppercase tracking-wide">Logged</div>
+            </div>
+            <mat-icon class="text-4xl text-primary/20">trending_up</mat-icon>
+            <div class="text-center">
+              <div class="text-3xl font-bold text-muted-foreground">{{ timeSlots.length - hoursLogged() }}</div>
+              <div class="text-xs text-muted-foreground uppercase tracking-wide">Remaining</div>
+            </div>
+          </div>
+          <mat-progress-bar class="rounded-full h-3 shadow-inner" mode="determinate" [value]="completionPercent()" color="primary"></mat-progress-bar>
+          <p class="mt-3 text-center text-sm font-semibold text-primary">{{ completionPercent() }}% Complete</p>
+          <div *ngIf="lastDailyReportSavedAt()" class="mt-4 flex items-center justify-center gap-2 rounded-xl bg-green-50 border border-green-200 px-4 py-2">
+            <mat-icon class="text-green-600 text-base">check_circle</mat-icon>
+            <span class="text-xs font-bold text-green-600">Saved {{ lastDailyReportSavedAt() | date: 'shortTime' }}</span>
           </div>
         </mat-card-content>
       </mat-card>
 
-      <mat-card class="bg-card/90 shadow-sm" *ngIf="missingCount(); else noAlerts">
-        <mat-card-header>
-          <mat-card-title>Missing submissions</mat-card-title>
-          <mat-card-subtitle>Follow up on these days</mat-card-subtitle>
-        </mat-card-header>
-        <mat-card-content>
+      <!-- Missing Submissions Card -->
+      <mat-card class="bg-gradient-to-br from-white to-red-50/50 shadow-lg hover:shadow-xl transition-all border-2 border-red-100 rounded-2xl overflow-hidden" *ngIf="missingCount(); else noAlerts">
+        <div class="bg-gradient-to-r from-red-500 to-red-600 px-6 py-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2 text-white">
+              <mat-icon class="text-2xl animate-pulse">priority_high</mat-icon>
+              <mat-card-title class="text-white font-bold">Missing Submissions</mat-card-title>
+            </div>
+            <div class="bg-white rounded-full w-8 h-8 flex items-center justify-center">
+              <span class="text-red-600 text-sm font-bold">{{ missingCount() }}</span>
+            </div>
+          </div>
+        </div>
+        <mat-card-content class="pt-6">
+          <p class="text-xs font-medium text-red-600 uppercase tracking-wide mb-3">Follow up on these days</p>
           <mat-chip-listbox class="flex flex-wrap gap-2">
-            <mat-chip-option *ngFor="let day of missingReportAlerts()" color="warn" selected>
-              <mat-icon matChipTrailingIcon>edit_calendar</mat-icon>
+            <mat-chip-option *ngFor="let day of missingReportAlerts()" class="bg-red-100 border border-red-200 font-semibold text-red-700">
+              <mat-icon matChipTrailingIcon class="text-red-600">edit_calendar</mat-icon>
               {{ day }}
             </mat-chip-option>
           </mat-chip-listbox>
-          <p class="mt-3 text-xs text-muted-foreground">Backfill quick highlights for the days above to keep your streak intact.</p>
+          <div class="mt-4 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+            <div class="flex items-start gap-2">
+              <mat-icon class="text-red-500 text-sm">info</mat-icon>
+              <p class="text-xs text-red-600 font-medium">Backfill highlights to keep your streak intact</p>
+            </div>
+          </div>
         </mat-card-content>
       </mat-card>
       <ng-template #noAlerts>
-        <mat-card class="bg-card/90 shadow-sm">
-          <mat-card-header>
-            <mat-card-title>All caught up</mat-card-title>
-          </mat-card-header>
-          <mat-card-content class="flex items-center gap-2 text-sm text-muted-foreground">
-            <mat-icon color="primary">celebration</mat-icon>
-            <span>No outstanding daily reports detected.</span>
+        <mat-card class="bg-gradient-to-br from-white to-green-50/50 shadow-lg hover:shadow-xl transition-all border-2 border-green-100 rounded-2xl overflow-hidden">
+          <div class="bg-gradient-to-r from-green-500 to-green-600 px-6 py-4">
+            <div class="flex items-center gap-2 text-white">
+              <mat-icon class="text-2xl">check_circle</mat-icon>
+              <mat-card-title class="text-white font-bold">All Caught Up!</mat-card-title>
+            </div>
+          </div>
+          <mat-card-content class="pt-6">
+            <div class="flex flex-col items-center justify-center py-8">
+              <mat-icon class="text-6xl text-green-500 mb-4">celebration</mat-icon>
+              <p class="text-sm font-semibold text-green-600">Perfect! No outstanding reports</p>
+              <p class="text-xs text-muted-foreground mt-2">Keep up the great work!</p>
+            </div>
           </mat-card-content>
         </mat-card>
       </ng-template>
 
-      <mat-card class="bg-card/90 shadow-sm">
-        <mat-card-header>
-          <mat-card-title>Workspace tips</mat-card-title>
-        </mat-card-header>
-        <mat-card-content class="space-y-4 text-sm text-muted-foreground">
-          <div class="flex items-start gap-2">
-            <mat-icon color="primary">schedule</mat-icon>
-            <span>Use Daily Report to capture momentum each hour and surface blockers.</span>
+      <!-- Workspace Tips Card -->
+      <mat-card class="bg-gradient-to-br from-white to-blue-50/50 shadow-lg hover:shadow-xl transition-all border-2 border-blue-100 rounded-2xl overflow-hidden">
+        <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
+          <div class="flex items-center gap-2 text-white">
+            <mat-icon class="text-2xl">lightbulb</mat-icon>
+            <mat-card-title class="text-white font-bold">Workspace Tips</mat-card-title>
           </div>
-          <div class="flex items-start gap-2">
-            <mat-icon color="primary">report_problem</mat-icon>
-            <span>Escalate issues in minutes with the guided Incident Report flow.</span>
+        </div>
+        <mat-card-content class="pt-6 space-y-4">
+          <div class="flex items-start gap-3 p-3 rounded-xl bg-blue-50 border border-blue-100 hover:bg-blue-100 transition-colors">
+            <div class="bg-blue-500 rounded-lg p-2 flex-shrink-0">
+              <mat-icon class="text-white text-lg">schedule</mat-icon>
+            </div>
+            <div>
+              <p class="text-xs font-bold text-blue-600 mb-1">Daily Report</p>
+              <p class="text-xs text-muted-foreground">Capture momentum each hour and surface blockers fast</p>
+            </div>
           </div>
-          <div class="flex items-start gap-2">
-            <mat-icon color="primary">hub</mat-icon>
-            <span>Check Home for leadership announcements and team-wide highlights.</span>
+          <div class="flex items-start gap-3 p-3 rounded-xl bg-red-50 border border-red-100 hover:bg-red-100 transition-colors">
+            <div class="bg-red-500 rounded-lg p-2 flex-shrink-0">
+              <mat-icon class="text-white text-lg">report_problem</mat-icon>
+            </div>
+            <div>
+              <p class="text-xs font-bold text-red-600 mb-1">Incident Report</p>
+              <p class="text-xs text-muted-foreground">Escalate issues in minutes with guided workflow</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3 p-3 rounded-xl bg-purple-50 border border-purple-100 hover:bg-purple-100 transition-colors">
+            <div class="bg-purple-500 rounded-lg p-2 flex-shrink-0">
+              <mat-icon class="text-white text-lg">hub</mat-icon>
+            </div>
+            <div>
+              <p class="text-xs font-bold text-purple-600 mb-1">Home Feed</p>
+              <p class="text-xs text-muted-foreground">Check for leadership announcements and updates</p>
+            </div>
           </div>
         </mat-card-content>
       </mat-card>

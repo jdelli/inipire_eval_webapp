@@ -60,7 +60,7 @@ interface EmployeeNavItem {
     MatDividerModule,
   ],
   templateUrl: './employee-shell.component.html',
-  styles: ``,
+  styleUrls: ['./employee-shell.component.scss'],
 })
 export class EmployeeShellComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
@@ -275,5 +275,5 @@ function formatDateLabel(dateKey: string): string {
 }
 
 function sortEntries(entries: DailyReportEntry[]): DailyReportEntry[] {
-  return [...entries].sort((a, b) => a.hour.localeCompare(b.hour));
+  return [...entries].sort((a, b) => a.timeStart.localeCompare(b.timeStart));
 }

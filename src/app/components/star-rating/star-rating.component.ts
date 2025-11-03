@@ -1,4 +1,4 @@
-import { Component, forwardRef, Input } from '@angular/core';
+import { Component, forwardRef, Input, Output, EventEmitter } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
@@ -17,11 +17,20 @@ import { CommonModule } from '@angular/common';
 })
 export class StarRatingComponent implements ControlValueAccessor {
   @Input() maxRating = 5;
+  @Input() value = 0;
+  @Output() valueChange = new EventEmitter<number>();
+  
   rating = 0;
   hoveredRating = 0;
 
   private onChange: (value: number) => void = () => {};
   private onTouched: () => void = () => {};
+
+  ngOnInit(): void {
+    if (this.value) {
+      this.rating = this.value;
+    }
+  }
 
   get stars(): number[] {
     return Array(this.maxRating)
@@ -45,6 +54,7 @@ export class StarRatingComponent implements ControlValueAccessor {
     this.rating = rating;
     this.onChange(this.rating);
     this.onTouched();
+    this.valueChange.emit(this.rating);
   }
 
   setHoveredRating(rating: number): void {

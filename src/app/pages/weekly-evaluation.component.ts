@@ -17,6 +17,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatBadgeModule } from '@angular/material/badge';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 
 type PersonType = 'employee' | 'trainee';
 interface PersonRow {
@@ -54,6 +55,7 @@ interface DepartmentGroupRow {
     MatTooltipModule,
     MatDividerModule,
     MatBadgeModule,
+    MatCheckboxModule,
   ],
   templateUrl: './weekly-evaluation.component.html',
   styles: `
@@ -273,11 +275,17 @@ export class WeeklyEvaluationComponent {
     return this.groupRowsByDepartment(paginatedRows);
   });
 
+  readonly criteria = signal<Array<{id: string; name: string; rating: number; icon: string}>>([
+    { id: 'perf_1', name: 'Performance', rating: 3, icon: 'speed' },
+    { id: 'prod_2', name: 'Productivity', rating: 3, icon: 'trending_up' },
+    { id: 'team_3', name: 'Teamwork', rating: 3, icon: 'groups' },
+    { id: 'init_4', name: 'Initiative', rating: 3, icon: 'rocket_launch' },
+  ]);
+
   readonly evaluationForm = this.fb.nonNullable.group({
-    performance: [3, [Validators.required, Validators.min(1), Validators.max(5)]],
-    productivity: [3, [Validators.required, Validators.min(1), Validators.max(5)]],
-    teamwork: [3, [Validators.required, Validators.min(1), Validators.max(5)]],
-    initiative: [3, [Validators.required, Validators.min(1), Validators.max(5)]],
+    includeTestScore: [false],
+    testScore: [0, [Validators.min(0)]],
+    testScoreMax: [100, [Validators.required, Validators.min(1)]],
     comments: ['', Validators.required],
     strengths: [''],
     improvements: [''],
@@ -365,16 +373,24 @@ export class WeeklyEvaluationComponent {
   openEvaluationModal(person: Employee | Trainee, type: PersonType): void {
     this.selectedPerson.set(person);
     this.personType.set(type);
+    this.showModal.set(true);
+    
+    // Reset to default criteria
+    this.criteria.set([
+      { id: 'perf_1', name: 'Performance', rating: 3, icon: 'speed' },
+      { id: 'prod_2', name: 'Productivity', rating: 3, icon: 'trending_up' },
+      { id: 'team_3', name: 'Teamwork', rating: 3, icon: 'groups' },
+      { id: 'init_4', name: 'Initiative', rating: 3, icon: 'rocket_launch' },
+    ]);
+    
     this.evaluationForm.reset({
-      performance: 3,
-      productivity: 3,
-      teamwork: 3,
-      initiative: 3,
+      includeTestScore: false,
+      testScore: 0,
+      testScoreMax: 100,
       comments: '',
       strengths: '',
       improvements: '',
     });
-    this.showModal.set(true);
   }
 
   closeModal(): void {
@@ -395,12 +411,23 @@ export class WeeklyEvaluationComponent {
 
     const formValue = this.evaluationForm.getRawValue();
     const average = this.getAverageRating();
+    const criteriaList = this.criteria();
+
+    // Extract standard criteria or use defaults
+    const performance = criteriaList.find(c => c.name === 'Performance')?.rating || 0;
+    const productivity = criteriaList.find(c => c.name === 'Productivity')?.rating || 0;
+    const teamwork = criteriaList.find(c => c.name === 'Teamwork')?.rating || 0;
+    const initiative = criteriaList.find(c => c.name === 'Initiative')?.rating || 0;
 
     const evaluationData = {
-      performance: formValue.performance,
-      productivity: formValue.productivity,
-      teamwork: formValue.teamwork,
-      initiative: formValue.initiative,
+      performance,
+      productivity,
+      teamwork,
+      initiative,
+      criteria: criteriaList, // Include all criteria for reference
+      includeTestScore: formValue.includeTestScore,
+      testScore: formValue.includeTestScore ? formValue.testScore : undefined,
+      testScoreMax: formValue.includeTestScore ? formValue.testScoreMax : undefined,
       comments: formValue.comments,
       strengths: formValue.strengths,
       improvements: formValue.improvements,
@@ -481,9 +508,55 @@ export class WeeklyEvaluationComponent {
     return `${person.firstName || ''} ${person.lastName || ''}`.trim();
   }
 
+  addCriterion(): void {
+    const criterionName = prompt('Enter criterion name:');
+    if (criterionName && criterionName.trim()) {
+      const id = `custom_${Date.now()}`;
+      this.criteria.update(criteria => [...criteria, { id, name: criterionName.trim(), rating: 3, icon: 'star' }]);
+    }
+  }
+
+  editCriterion(id: string): void {
+    const criterion = this.criteria().find(c => c.id === id);
+    if (!criterion) return;
+    
+    const newName = prompt('Edit criterion name:', criterion.name);
+    if (newName && newName.trim()) {
+      this.criteria.update(criteria => 
+        criteria.map(c => c.id === id ? { ...c, name: newName.trim() } : c)
+      );
+    }
+  }
+
+  removeCriterion(id: string): void {
+    if (confirm('Are you sure you want to remove this criterion?')) {
+      this.criteria.update(criteria => criteria.filter(c => c.id !== id));
+    }
+  }
+
+  updateCriterionRating(id: string, rating: number): void {
+    this.criteria.update(criteria => 
+      criteria.map(c => c.id === id ? { ...c, rating } : c)
+    );
+  }
+
   getAverageRating(): number {
-    const { performance, productivity, teamwork, initiative } = this.evaluationForm.value;
-    return (performance! + productivity! + teamwork! + initiative!) / 4;
+    const { includeTestScore, testScore, testScoreMax } = this.evaluationForm.value;
+    
+    // Get all criteria scores
+    const criteriaList = this.criteria();
+    let totalScore = criteriaList.reduce((sum, c) => sum + c.rating, 0);
+    let numberOfScores = criteriaList.length;
+    
+    // Convert test score to 1-5 scale if test score is included
+    if (includeTestScore && testScore && testScore > 0 && testScoreMax && testScoreMax > 0) {
+      const testScorePercentage = testScore / testScoreMax;
+      const testScoreConverted = testScorePercentage * 5; // Convert to 1-5 scale
+      totalScore += testScoreConverted;
+      numberOfScores += 1;
+    }
+    
+    return numberOfScores > 0 ? totalScore / numberOfScores : 0;
   }
 
   trackDepartment(_index: number, group: DepartmentGroupRow): string {
@@ -492,6 +565,10 @@ export class WeeklyEvaluationComponent {
 
   trackRow(_index: number, row: PersonRow): string {
     return row.id;
+  }
+
+  trackCriterion(_index: number, criterion: {id: string; name: string; rating: number; icon: string}): string {
+    return criterion.id;
   }
 
   toggleDepartment(type: 'employee' | 'trainee', department: string): void {

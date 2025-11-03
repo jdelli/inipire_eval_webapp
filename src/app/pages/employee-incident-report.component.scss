@@ -1,0 +1,218 @@
+// Incident Report Component Styles
+
+.form-field-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.notes-textarea-custom {
+  resize: vertical;
+  min-height: 100px;
+  font-family: inherit;
+  line-height: 1.5;
+  transition: all 0.3s ease;
+}
+
+.notes-textarea-custom:hover,
+.custom-input:hover,
+.custom-select:hover {
+  border-color: hsl(var(--primary) / 0.5);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.15);
+  transform: translateY(-1px);
+}
+
+.notes-textarea-custom:focus,
+.custom-input:focus,
+.custom-select:focus {
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+  transform: translateY(-1px);
+}
+
+.notes-textarea-custom:disabled,
+.custom-input:disabled,
+.custom-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: hsl(var(--muted));
+}
+
+.custom-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23ef4444' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1.25em 1.25em;
+  padding-right: 2.5rem;
+  cursor: pointer;
+  min-height: 48px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.custom-input {
+  min-height: 48px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+// Severity indicator badges
+.severity-low {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(34, 197, 94, 0.08) 100%);
+  border-left: 4px solid #22c55e;
+  color: #16a34a;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.2);
+}
+
+.severity-medium {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(251, 191, 36, 0.08) 100%);
+  border-left: 4px solid #fbbf24;
+  color: #d97706;
+  box-shadow: 0 2px 8px rgba(251, 191, 36, 0.2);
+}
+
+.severity-high {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(249, 115, 22, 0.08) 100%);
+  border-left: 4px solid #f97316;
+  color: #ea580c;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.2);
+}
+
+.severity-critical {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.08) 100%);
+  border-left: 4px solid #ef4444;
+  color: #dc2626;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
+  animation: pulse 2s infinite;
+}
+
+// Animations
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.02);
+    opacity: 0.95;
+  }
+}
+
+.fade-in {
+  animation: fadeInScale 0.3s ease-out;
+}
+
+// Card styling
+mat-card {
+  transition: all 0.3s ease;
+  
+  &:hover {
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+  }
+}
+
+mat-card-header {
+  padding: 2rem;
+  border-bottom: 2px solid rgba(239, 68, 68, 0.1);
+  
+  @media (max-width: 768px) {
+    padding: 1.5rem 1rem;
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+}
+
+// Form styling
+form {
+  button[type="submit"] {
+    transition: all 0.3s ease;
+    
+    &:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
+    }
+    
+    &:active:not(:disabled) {
+      transform: translateY(0);
+    }
+  }
+  
+  button[type="button"] {
+    transition: all 0.2s ease;
+    
+    &:hover {
+      transform: translateY(-1px);
+    }
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 1024px) {
+  .custom-input,
+  .custom-select,
+  .notes-textarea-custom {
+    font-size: 16px; // Prevent zoom on iOS
+  }
+}
+
+@media (max-width: 640px) {
+  mat-card-header {
+    gap: 1rem;
+    
+    mat-chip {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+  
+  form {
+    .lg\\:col-span-2 {
+      grid-column: span 1;
+    }
+    
+    button {
+      width: 100%;
+    }
+  }
+}
+
+// Error and success messages
+div[class*="border-red-"] {
+  animation: fadeInScale 0.3s ease-out;
+}
+
+div[class*="border-green-"] {
+  animation: fadeInScale 0.3s ease-out;
+}
+
+// Tooltip customization
+::ng-deep {
+  .mat-mdc-tooltip {
+    font-size: 12px !important;
+    padding: 8px 12px !important;
+  }
+}
+
+// Focus states
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #ef4444 !important;
+}
+
+// Placeholder styling
+::placeholder {
+  opacity: 0.5;
+  font-style: italic;
+}

@@ -303,83 +303,214 @@
       </button>
     </div>
 
-    <form [formGroup]="evaluationForm" (ngSubmit)="submitEvaluation()" class="space-y-6 p-6">
-      <div class="grid gap-x-8 gap-y-6 sm:grid-cols-2">
-        <div class="space-y-3">
-          <label class="text-sm font-medium text-foreground">Performance</label>
-          <app-star-rating formControlName="performance"></app-star-rating>
+    <form [formGroup]="evaluationForm" (ngSubmit)="submitEvaluation()" class="p-6">
+      <!-- 2 Column Layout -->
+      <div class="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+        <!-- LEFT COLUMN: Criteria & Test Score -->
+        <div class="space-y-6">
+          <!-- Evaluation Criteria Section -->
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <h4 class="text-sm font-semibold text-foreground uppercase tracking-wide flex items-center gap-2">
+                <mat-icon class="text-primary text-lg">stars</mat-icon>
+                Evaluation Criteria
+              </h4>
+              <button 
+                mat-stroked-button 
+                color="primary"
+                type="button"
+                (click)="addCriterion()"
+                class="!text-xs"
+              >
+                <mat-icon class="!text-base">add</mat-icon>
+                Add Criterion
+              </button>
+            </div>
+            
+            <div class="space-y-3 bg-gradient-to-br from-primary/5 to-transparent rounded-xl p-5 border-2 border-primary/10">
+              <div 
+                *ngFor="let criterion of criteria(); trackBy: trackCriterion"
+                class="flex items-start gap-3 p-3 bg-white rounded-lg border border-primary/10 shadow-sm"
+              >
+                <div class="flex-1 space-y-2">
+                  <label class="text-sm font-medium text-foreground flex items-center gap-2">
+                    <mat-icon class="text-primary text-base">{{ criterion.icon }}</mat-icon>
+                    {{ criterion.name }}
+                  </label>
+                  <app-star-rating 
+                    [value]="criterion.rating"
+                    (valueChange)="updateCriterionRating(criterion.id, $event)"
+                  ></app-star-rating>
+                </div>
+                <div class="flex gap-1">
+                  <button
+                    mat-icon-button
+                    color="primary"
+                    type="button"
+                    (click)="editCriterion(criterion.id)"
+                    matTooltip="Edit criterion name"
+                    class="!mt-1"
+                  >
+                    <mat-icon class="!text-lg">edit</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    color="warn"
+                    type="button"
+                    (click)="removeCriterion(criterion.id)"
+                    matTooltip="Remove criterion"
+                    class="!mt-1"
+                  >
+                    <mat-icon class="!text-lg">delete</mat-icon>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Test Score (Optional) -->
+          <div class="space-y-4">
+            <mat-card class="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-transparent p-4 shadow-sm">
+              <label class="flex items-center gap-2 cursor-pointer mb-3">
+                <input 
+                  type="checkbox" 
+                  formControlName="includeTestScore"
+                  class="w-4 h-4 cursor-pointer accent-purple-600"
+                />
+                <span class="text-sm font-medium text-foreground flex items-center gap-2">
+                  <mat-icon class="text-purple-600 text-lg">quiz</mat-icon>
+                  Include Test Score (Optional)
+                </span>
+              </label>
+
+              <div *ngIf="evaluationForm.get('includeTestScore')?.value" class="space-y-3 animate-fade-in pl-6">
+                <label class="text-sm font-medium text-foreground flex items-center gap-2">
+                  <mat-icon class="text-purple-600 text-base">grading</mat-icon>
+                  Test Score
+                </label>
+                <div class="flex items-center gap-2">
+                  <input 
+                    type="number" 
+                    formControlName="testScore" 
+                    min="0"
+                    placeholder="Score"
+                    class="w-28 rounded-lg border-2 border-purple-200 bg-white px-3 py-2 text-sm text-foreground outline-none ring-purple-600/20 transition focus:ring-2 focus:border-purple-600"
+                  />
+                  <span class="text-sm text-muted-foreground font-medium">out of</span>
+                  <input 
+                    type="number" 
+                    formControlName="testScoreMax" 
+                    min="1"
+                    placeholder="Total"
+                    class="w-28 rounded-lg border-2 border-purple-200 bg-white px-3 py-2 text-sm text-foreground outline-none ring-purple-600/20 transition focus:ring-2 focus:border-purple-600"
+                  />
+                </div>
+                <p class="text-xs text-muted-foreground bg-white/60 p-2 rounded border border-purple-100">
+                  <mat-icon class="!text-xs align-middle">info</mat-icon>
+                  Enter the score and total items (e.g., 60 out of 100). This will be converted to a 1-5 scale for the average.
+                </p>
+              </div>
+            </mat-card>
+          </div>
+
+          <!-- Overall Average -->
+          <mat-card class="border-2 border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5 shadow-md">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-2">
+                <mat-icon class="text-primary text-xl">analytics</mat-icon>
+                <span class="text-sm font-semibold text-foreground uppercase tracking-wide">Overall Average</span>
+              </div>
+              <div class="text-right">
+                <div class="text-3xl font-bold text-primary">{{ getAverageRating().toFixed(1) }}</div>
+                <div class="text-xs text-muted-foreground">out of 5</div>
+              </div>
+            </div>
+            <mat-progress-bar
+              mode="determinate"
+              color="primary"
+              class="!h-3 rounded-full bg-primary/10 shadow-inner"
+              [value]="(getAverageRating() / 5) * 100"
+            ></mat-progress-bar>
+            <div class="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+              <span>{{ ((getAverageRating() / 5) * 100).toFixed(0) }}% Rating</span>
+              <span class="bg-primary/10 text-primary px-2 py-1 rounded font-medium">
+                {{ criteria().length + (evaluationForm.get('includeTestScore')?.value ? 1 : 0) }} criteria evaluated
+              </span>
+            </div>
+          </mat-card>
         </div>
-        <div class="space-y-3">
-          <label class="text-sm font-medium text-foreground">Productivity</label>
-          <app-star-rating formControlName="productivity"></app-star-rating>
-        </div>
-        <div class="space-y-3">
-          <label class="text-sm font-medium text-foreground">Teamwork</label>
-          <app-star-rating formControlName="teamwork"></app-star-rating>
-        </div>
-        <div class="space-y-3">
-          <label class="text-sm font-medium text-foreground">Initiative</label>
-          <app-star-rating formControlName="initiative"></app-star-rating>
+
+        <!-- RIGHT COLUMN: Detailed Feedback -->
+        <div class="space-y-4">
+          <h4 class="text-sm font-semibold text-foreground uppercase tracking-wide flex items-center gap-2">
+            <mat-icon class="text-green-600 text-lg">chat</mat-icon>
+            Detailed Feedback
+          </h4>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-foreground flex items-center gap-2">
+              <mat-icon class="text-green-600 text-base">comment</mat-icon>
+              Comments <span class="text-red-600">*</span>
+            </label>
+            <textarea
+              formControlName="comments"
+              rows="6"
+              placeholder="Provide overall feedback on this week's performance..."
+              class="w-full rounded-lg border-2 border-input bg-background px-4 py-3 text-sm text-foreground outline-none ring-green-600/20 transition focus:ring-2 focus:border-green-600 shadow-sm"
+            ></textarea>
+            <p *ngIf="evaluationForm.get('comments')?.invalid && evaluationForm.get('comments')?.touched" class="text-xs text-red-600 flex items-center gap-1">
+              <mat-icon class="!text-sm">error</mat-icon>
+              Comments are required
+            </p>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-foreground flex items-center gap-2">
+              <mat-icon class="text-green-600 text-base">thumb_up</mat-icon>
+              Strengths
+            </label>
+            <textarea
+              formControlName="strengths"
+              rows="5"
+              placeholder="What did they do particularly well this week?"
+              class="w-full rounded-lg border-2 border-input bg-background px-4 py-3 text-sm text-foreground outline-none ring-green-600/20 transition focus:ring-2 focus:border-green-600 shadow-sm"
+            ></textarea>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-foreground flex items-center gap-2">
+              <mat-icon class="text-orange-600 text-base">trending_up</mat-icon>
+              Areas for Improvement
+            </label>
+            <textarea
+              formControlName="improvements"
+              rows="5"
+              placeholder="Where can we help them grow faster?"
+              class="w-full rounded-lg border-2 border-input bg-background px-4 py-3 text-sm text-foreground outline-none ring-orange-600/20 transition focus:ring-2 focus:border-orange-600 shadow-sm"
+            ></textarea>
+          </div>
         </div>
       </div>
 
-      <mat-card class="border bg-primary/5 p-4">
-        <div class="flex items-center justify-between">
-          <span class="text-sm font-medium text-foreground">Overall Average</span>
-          <span class="text-2xl font-bold text-primary">{{ getAverageRating().toFixed(1) }}/5</span>
-        </div>
-        <mat-progress-bar
-          mode="determinate"
-          color="primary"
-          class="mt-3 rounded-full bg-primary/20"
-          [value]="(getAverageRating() / 5) * 100"
-        ></mat-progress-bar>
-      </mat-card>
-
-      <div class="space-y-2">
-        <label class="text-sm font-medium text-foreground">Comments <span class="text-destructive">*</span></label>
-        <textarea
-          formControlName="comments"
-          rows="4"
-          placeholder="Provide overall feedback on this week's performance..."
-          class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none ring-primary/20 transition focus:ring-2"
-        ></textarea>
-        <p *ngIf="evaluationForm.get('comments')?.invalid && evaluationForm.get('comments')?.touched" class="text-xs text-destructive">
-          Comments are required
-        </p>
-      </div>
-
-      <div class="space-y-2">
-        <label class="text-sm font-medium text-foreground">Strengths</label>
-        <textarea
-          formControlName="strengths"
-          rows="3"
-          placeholder="What did they do particularly well this week?"
-          class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none ring-primary/20 transition focus:ring-2"
-        ></textarea>
-      </div>
-
-      <div class="space-y-2">
-        <label class="text-sm font-medium text-foreground">Areas for Improvement</label>
-        <textarea
-          formControlName="improvements"
-          rows="3"
-          placeholder="Where can we help them grow faster?"
-          class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none ring-primary/20 transition focus:ring-2"
-        ></textarea>
-      </div>
-
-      <div class="flex flex-col gap-3 sm:flex-row">
+      <!-- Action Buttons -->
+      <div class="flex flex-col gap-3 sm:flex-row pt-6 border-t-2 mt-6">
         <button
           mat-flat-button
           color="primary"
           type="submit"
-          class="flex-1"
+          class="flex-1 !py-6 !text-base !font-semibold shadow-lg hover:shadow-xl transition-shadow"
           [disabled]="evaluationForm.invalid"
         >
-          Submit evaluation
+          <mat-icon class="mr-2">send</mat-icon>
+          Submit Evaluation
         </button>
-        <button mat-stroked-button color="primary" type="button" (click)="closeModal()">
+        <button 
+          mat-stroked-button 
+          type="button" 
+          (click)="closeModal()"
+          class="!py-6 !text-base"
+        >
+          <mat-icon class="mr-2">close</mat-icon>
           Cancel
         </button>
       </div>

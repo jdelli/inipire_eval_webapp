@@ -92,6 +92,44 @@ import { AuthService } from '../services/auth.service';
             </label>
           </div>
 
+          <!-- Test Score (Optional) -->
+          <div class="border rounded p-4 bg-blue-50">
+            <label class="flex items-center gap-2 mb-3 cursor-pointer">
+              <input 
+                type="checkbox" 
+                formControlName="includeTestScore"
+                class="w-4 h-4 cursor-pointer"
+              />
+              <span class="text-sm font-medium">Include Test Score (Optional)</span>
+            </label>
+
+            <div *ngIf="evalForm.get('includeTestScore')?.value" class="space-y-3">
+              <label class="flex flex-col">
+                <span class="text-sm font-medium mb-1">Test Score</span>
+                <div class="flex items-center gap-2">
+                  <input 
+                    type="number" 
+                    formControlName="testScore" 
+                    min="0"
+                    class="border rounded px-3 py-2 w-24"
+                    placeholder="Score"
+                  />
+                  <span class="text-sm text-gray-600">out of</span>
+                  <input 
+                    type="number" 
+                    formControlName="testScoreMax" 
+                    min="1"
+                    class="border rounded px-3 py-2 w-24"
+                    placeholder="Total"
+                  />
+                </div>
+                <span class="text-xs text-gray-600 mt-1">
+                  Enter the score and total items (e.g., 60 out of 100). This will be converted to a 1-5 scale for the average.
+                </span>
+              </label>
+            </div>
+          </div>
+
           <label class="flex flex-col">
             <span class="text-sm font-medium mb-1">Comments</span>
             <textarea 
@@ -177,6 +215,9 @@ import { AuthService } from '../services/auth.service';
               <p>Productivity: {{ eval.productivity }}</p>
               <p>Teamwork: {{ eval.teamwork }}</p>
               <p>Initiative: {{ eval.initiative }}</p>
+              <p *ngIf="eval.includeTestScore && eval.testScore !== undefined" class="col-span-2 text-blue-600 font-medium">
+                Test Score: {{ eval.testScore }} / {{ eval.testScoreMax || 100 }} ({{ ((eval.testScore / (eval.testScoreMax || 100)) * 5).toFixed(1) }}/5)
+              </p>
             </div>
             <p class="text-sm mt-2"><strong>Comments:</strong> {{ eval.comments }}</p>
             <p class="text-sm"><strong>Strengths:</strong> {{ eval.strengths }}</p>
@@ -206,6 +247,9 @@ export class TeamEvaluationComponent implements OnInit {
     productivity: [0, [Validators.required, Validators.min(1), Validators.max(5)]],
     teamwork: [0, [Validators.required, Validators.min(1), Validators.max(5)]],
     initiative: [0, [Validators.required, Validators.min(1), Validators.max(5)]],
+    includeTestScore: [false],
+    testScore: [0, [Validators.min(0)]],
+    testScoreMax: [100, [Validators.required, Validators.min(1)]],
     comments: ['', Validators.required],
     strengths: ['', Validators.required],
     improvements: ['', Validators.required],
@@ -238,12 +282,20 @@ export class TeamEvaluationComponent implements OnInit {
     this.errorMessage.set(null);
 
     const formValues = this.evalForm.getRawValue();
-    const average = (
-      formValues.performance +
-      formValues.productivity +
-      formValues.teamwork +
-      formValues.initiative
-    ) / 4;
+    
+    // Calculate average - include test score if checkbox is checked
+    let totalScore = formValues.performance + formValues.productivity + formValues.teamwork + formValues.initiative;
+    let numberOfScores = 4;
+    
+    // Convert test score to 1-5 scale if test score is included
+    if (formValues.includeTestScore && formValues.testScore > 0 && formValues.testScoreMax > 0) {
+      const testScorePercentage = formValues.testScore / formValues.testScoreMax;
+      const testScoreConverted = testScorePercentage * 5; // Convert to 1-5 scale
+      totalScore += testScoreConverted;
+      numberOfScores = 5;
+    }
+    
+    const average = totalScore / numberOfScores;
 
     // Get current user info for evaluatedBy field
     this.authService.profile$.subscribe((profile) => {
