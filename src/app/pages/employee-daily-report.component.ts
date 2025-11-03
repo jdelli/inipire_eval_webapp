@@ -60,9 +60,9 @@ const PROJECT_PALETTE = ['#FFAD60', '#FF6B6B', '#4C6EF5', '#20C997', '#3BC9DB', 
               <p class="panel-subtitle">{{ selectedDateAsDate() | date: 'MMMM yyyy' }}</p>
             </div>
             <div class="view-toggle">
-              <button type="button" [class.active]="viewMode() === 'day'" (click)="setViewMode('day')" disabled>Day</button>
+              <button type="button" [class.active]="viewMode() === 'day'" (click)="setViewMode('day')">Day</button>
               <button type="button" [class.active]="viewMode() === 'week'" (click)="setViewMode('week')">Week</button>
-              <button type="button" [class.active]="viewMode() === 'month'" (click)="setViewMode('month')" disabled>Month</button>
+              <button type="button" [class.active]="viewMode() === 'month'" (click)="setViewMode('month')">Month</button>
             </div>
           </div>
           <mat-calendar
@@ -91,7 +91,7 @@ const PROJECT_PALETTE = ['#FFAD60', '#FF6B6B', '#4C6EF5', '#20C997', '#3BC9DB', 
               <span class="project-hours" *ngIf="project.hours">{{ project.hours | number:'1.0-1' }}h</span>
             </li>
           </ul>
-          <button mat-stroked-button type="button" class="add-project-btn">
+          <button mat-stroked-button type="button" class="add-project-btn" (click)="openEntryDrawer()">
             <mat-icon>add</mat-icon>
             Add project
           </button>
@@ -774,6 +774,11 @@ export class EmployeeDailyReportComponent implements OnInit {
 
   goToToday(): void {
     this.selectedDate.set(this.todayKey);
+  }
+
+  openEntryDrawer(): void {
+    this.resetForm();
+    this.showEntryDrawer.set(true);
   }
 
   clearEntries(): void {
